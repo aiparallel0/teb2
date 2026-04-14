@@ -13,7 +13,6 @@
 #include "db/db.h"
 #include "exec/exec.h"
 #include "agents/channel.h"
-
 /* API handler declarations */
 extern HttpResp handle_goal_create(HttpReq req, Ctx *ctx);
 extern HttpResp handle_goal_get(HttpReq req, Ctx *ctx);
@@ -25,21 +24,18 @@ extern HttpResp handle_task_status(HttpReq req, Ctx *ctx);
 extern HttpResp handle_register(HttpReq req, Ctx *ctx);
 extern HttpResp handle_login(HttpReq req, Ctx *ctx);
 extern HttpResp handle_refresh(HttpReq req, Ctx *ctx);
-
+extern TokenResult authenticate_request(HttpReq req, const char *secret);
 static volatile sig_atomic_t g_running = 1;
-
 static void handle_signal(int sig)
 {
     (void)sig;
     g_running = 0;
 }
-
 static void parse_request(const char *raw, size_t len, HttpReq *req)
 {
     const char *end = raw + len;
     const char *p   = raw;
-    const char *sp1, *sp2, *body;
-
+    const char *sp1, *sp2, *body, *auth;
     memset(req, 0, sizeof(*req));
     sp1 = memchr(p, ' ', (size_t)(end - p));
     if (!sp1) return;
@@ -48,6 +44,12 @@ static void parse_request(const char *raw, size_t len, HttpReq *req)
     sp2 = memchr(p, ' ', (size_t)(end - p));
     if (!sp2) return;
     snprintf(req->path, sizeof(req->path), "%.*s", (int)(sp2 - p), p);
+    auth = strstr(raw, "\nAuthorization: ");
+    if (auth) {
+        auth += 16;
+        snprintf(req->auth_header, sizeof(req->auth_header),
+                 "%.*s", (int)(strcspn(auth, "\r\n")), auth);
+    }
     body = strstr(raw, "\r\n\r\n");
     if (body) {
         body += 4;
@@ -57,7 +59,6 @@ static void parse_request(const char *raw, size_t len, HttpReq *req)
         memcpy(req->body, body, req->body_len);
     }
 }
-
 static void write_response(int fd, HttpResp resp)
 {
     char    hdr[256];
@@ -74,7 +75,6 @@ static void write_response(int fd, HttpResp resp)
         (void)nw;
     }
 }
-
 static HttpResp dispatch(HttpReq req, Ctx *ctx)
 {
     const char *p = req.path;
@@ -103,7 +103,6 @@ static HttpResp dispatch(HttpReq req, Ctx *ctx)
         return r;
     }
 }
-
 int main(int argc, char **argv)
 {
     Config cfg;
@@ -122,7 +121,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "db_open failed\n");
         return 1;
     }
-
     signal(SIGTERM, handle_signal);
     signal(SIGINT,  handle_signal);
 
@@ -144,6 +142,8 @@ int main(int argc, char **argv)
     while (g_running) {
         ssize_t n;
         Ctx ctx;
+        UserClaims uc;
+        TokenResult ar;
         conn = accept(srv, NULL, NULL);
         if (conn < 0) continue;
         n = read(conn, buf, sizeof(buf) - 1);
@@ -153,12 +153,13 @@ int main(int argc, char **argv)
             memset(&ctx, 0, sizeof(ctx));
             ctx.db  = &db;
             ctx.cfg = &cfg;
+            ar = authenticate_request(req, cfg.secret);
+            if (ar.err == ERR_OK) { uc = ar.claims; ctx.user = &uc; }
             resp = dispatch(req, &ctx);
             write_response(conn, resp);
         }
         close(conn);
     }
-
     close(srv);
     db_close(&db);
     return 0;

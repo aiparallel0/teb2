@@ -83,7 +83,7 @@ TaskResult store_task(Db *db, TaskQuery q)
     }
     sqlite3_bind_int64(stmt, 1, q.goal_id);
     sqlite3_bind_text(stmt,  2, q.user_id, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt,  3, "untitled",    -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt,  3, q.title[0] ? q.title : "untitled", -1, SQLITE_STATIC);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         r.rows[0].id      = sqlite3_column_int64(stmt, 0);
         r.rows[0].goal_id = q.goal_id;

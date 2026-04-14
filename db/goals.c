@@ -100,7 +100,7 @@ GoalResult store_goal(Db *db, GoalQuery q)
         r.err = ERR_DB; return r;
     }
     sqlite3_bind_text(stmt, 1, q.user_id, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, "untitled", -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, q.title[0] ? q.title : "untitled", -1, SQLITE_STATIC);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         r.rows[0].id = sqlite3_column_int64(stmt, 0);
         snprintf(r.rows[0].user_id, sizeof(r.rows[0].user_id), "%s", q.user_id);

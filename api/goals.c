@@ -28,6 +28,22 @@ static HttpResp json_ok(const char *body)
     return r;
 }
 
+static int extract_json_str(const char *body, const char *key,
+                            char *out, size_t outsz)
+{
+    const char *k = strstr(body, key);
+    const char *v;
+    size_t i;
+    if (!k) return 0;
+    k += strlen(key);
+    while (*k == ' ' || *k == ':' || *k == '"') k++;
+    v = k;
+    for (i = 0; i < outsz - 1 && v[i] != '\0' && v[i] != '"'; i++)
+        out[i] = v[i];
+    out[i] = '\0';
+    return i > 0 ? 1 : 0;
+}
+
 HttpResp handle_goal_create(HttpReq req, Ctx *ctx)
 {
     GoalQuery q;
@@ -41,7 +57,7 @@ HttpResp handle_goal_create(HttpReq req, Ctx *ctx)
     snprintf(q.user_id, sizeof(q.user_id), "%lld",
              (long long)ctx->user->user_id);
     q.limit = 1;
-    (void)req;
+    extract_json_str(req.body, "\"title\"", q.title, sizeof(q.title));
 
     gr = store_goal(ctx->db, q);
     if (gr.err != ERR_OK) return json_error(500, "db_error");
