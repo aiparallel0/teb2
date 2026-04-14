@@ -8,7 +8,7 @@ LDFLAGS = -lsqlite3 -lcrypt
 
 SRCS = core/config.c \
        auth/hash.c auth/token.c auth/rbac.c \
-       db/goals.c db/tasks.c \
+       db/goals.c db/tasks.c db/users.c \
        exec/vault.c exec/http.c exec/browser.c \
        agents/coord.c agents/finance.c agents/outreach.c agents/research.c \
        api/goals.c api/tasks.c api/auth.c \

@@ -92,11 +92,20 @@ typedef struct { char action[64]; char target[256]; char value[512]; } SerialCmd
 typedef struct { Err err; int status; char body[4096]; size_t body_len; } HttpResult;
 typedef struct { Err err; char output[4096]; size_t output_len; } BrowserResult;
 
-typedef struct { int64_t id; char user_id[64]; int limit; int offset; } GoalQuery;
+typedef struct {
+    int64_t id; char user_id[64]; char title[256]; int limit; int offset;
+} GoalQuery;
 typedef struct { Err err; Goal rows[16]; int count; } GoalResult;
 
-typedef struct { int64_t id; int64_t goal_id; char user_id[64]; int limit; } TaskQuery;
+typedef struct {
+    int64_t id; int64_t goal_id; char user_id[64]; char title[256]; int limit;
+} TaskQuery;
 typedef struct { Err err; Task rows[16]; int count; } TaskResult;
+
+typedef struct {
+    int64_t id; char email[128]; char password_hash[128]; UserRole role;
+} UserQuery;
+typedef struct { Err err; User user; } UserResult;
 
 typedef struct { char login[128]; char password[128]; } Cred;
 
