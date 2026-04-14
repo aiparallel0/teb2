@@ -1,0 +1,121 @@
+#define _POSIX_C_SOURCE 200809L
+#include <string.h>
+#include <stdio.h>
+#include <sqlite3.h>
+#include "core/types.h"
+#include "core/errors.h"
+#include "db/db.h"
+
+static const char *SCHEMA_TASKS =
+    "CREATE TABLE IF NOT EXISTS tasks("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "goal_id INTEGER NOT NULL,"
+    "user_id TEXT NOT NULL,"
+    "title TEXT NOT NULL,"
+    "description TEXT NOT NULL DEFAULT '',"
+    "status TEXT NOT NULL DEFAULT 'pending',"
+    "agent TEXT NOT NULL DEFAULT '',"
+    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));";
+
+static void ensure_tasks_schema(struct sqlite3 *h)
+{
+    char *err = NULL;
+    (void)sqlite3_exec(h, SCHEMA_TASKS, NULL, NULL, &err);
+    sqlite3_free(err);
+}
+
+static Task row_to_task(sqlite3_stmt *stmt)
+{
+    Task t;
+    const char *s;
+    memset(&t, 0, sizeof(t));
+    t.id         = sqlite3_column_int64(stmt, 0);
+    t.goal_id    = sqlite3_column_int64(stmt, 1);
+    s            = (const char *)sqlite3_column_text(stmt, 2);
+    if (s) snprintf(t.user_id,     sizeof(t.user_id),     "%s", s);
+    s            = (const char *)sqlite3_column_text(stmt, 3);
+    if (s) snprintf(t.title,       sizeof(t.title),       "%s", s);
+    s            = (const char *)sqlite3_column_text(stmt, 4);
+    if (s) snprintf(t.description, sizeof(t.description), "%s", s);
+    s            = (const char *)sqlite3_column_text(stmt, 5);
+    if (s) snprintf(t.status,      sizeof(t.status),      "%s", s);
+    s            = (const char *)sqlite3_column_text(stmt, 6);
+    if (s) snprintf(t.agent,       sizeof(t.agent),       "%s", s);
+    t.created_at = sqlite3_column_int64(stmt, 7);
+    return t;
+}
+
+TaskResult fetch_task(Db *db, TaskQuery q)
+{
+    TaskResult r;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "SELECT id,goal_id,user_id,title,description,status,agent,created_at"
+                      " FROM tasks WHERE id=? LIMIT 1;";
+    memset(&r, 0, sizeof(r));
+    if (!db || !db->handle) { r.err = ERR_DB; return r; }
+    ensure_tasks_schema(db->handle);
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        r.err = ERR_DB; return r;
+    }
+    sqlite3_bind_int64(stmt, 1, q.id);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        r.rows[0] = row_to_task(stmt);
+        r.count   = 1;
+        r.err     = ERR_OK;
+    } else {
+        r.err = ERR_NOT_FOUND;
+    }
+    sqlite3_finalize(stmt);
+    return r;
+}
+
+TaskResult store_task(Db *db, TaskQuery q)
+{
+    TaskResult r;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "INSERT INTO tasks(goal_id,user_id,title) VALUES(?,?,?)"
+                      " RETURNING id;";
+    memset(&r, 0, sizeof(r));
+    if (!db || !db->handle) { r.err = ERR_DB; return r; }
+    ensure_tasks_schema(db->handle);
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        r.err = ERR_DB; return r;
+    }
+    sqlite3_bind_int64(stmt, 1, q.goal_id);
+    sqlite3_bind_text(stmt,  2, q.user_id, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt,  3, "untitled",    -1, SQLITE_STATIC);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        r.rows[0].id      = sqlite3_column_int64(stmt, 0);
+        r.rows[0].goal_id = q.goal_id;
+        snprintf(r.rows[0].user_id, sizeof(r.rows[0].user_id), "%s", q.user_id);
+        r.count = 1;
+        r.err   = ERR_OK;
+    } else {
+        r.err = ERR_DB;
+    }
+    sqlite3_finalize(stmt);
+    return r;
+}
+
+TaskResult list_tasks(Db *db, TaskQuery q)
+{
+    TaskResult r;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "SELECT id,goal_id,user_id,title,description,status,agent,created_at"
+                      " FROM tasks WHERE goal_id=? LIMIT ?;";
+    int lim;
+    memset(&r, 0, sizeof(r));
+    if (!db || !db->handle) { r.err = ERR_DB; return r; }
+    ensure_tasks_schema(db->handle);
+    lim = (q.limit > 0 && q.limit <= 16) ? q.limit : 16;
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        r.err = ERR_DB; return r;
+    }
+    sqlite3_bind_int64(stmt, 1, q.goal_id);
+    sqlite3_bind_int(stmt,   2, lim);
+    while (sqlite3_step(stmt) == SQLITE_ROW && r.count < 16)
+        r.rows[r.count++] = row_to_task(stmt);
+    r.err = ERR_OK;
+    sqlite3_finalize(stmt);
+    return r;
+}
