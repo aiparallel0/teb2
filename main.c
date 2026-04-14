@@ -13,18 +13,7 @@
 #include "db/db.h"
 #include "exec/exec.h"
 #include "agents/channel.h"
-/* API handler declarations */
-extern HttpResp handle_goal_create(HttpReq req, Ctx *ctx);
-extern HttpResp handle_goal_get(HttpReq req, Ctx *ctx);
-extern HttpResp handle_goal_list(HttpReq req, Ctx *ctx);
-extern HttpResp handle_goal_decompose(HttpReq req, Ctx *ctx);
-extern HttpResp handle_task_update(HttpReq req, Ctx *ctx);
-extern HttpResp handle_task_execute(HttpReq req, Ctx *ctx);
-extern HttpResp handle_task_status(HttpReq req, Ctx *ctx);
-extern HttpResp handle_register(HttpReq req, Ctx *ctx);
-extern HttpResp handle_login(HttpReq req, Ctx *ctx);
-extern HttpResp handle_refresh(HttpReq req, Ctx *ctx);
-extern TokenResult authenticate_request(HttpReq req, const char *secret);
+#include "api/api.h"
 static volatile sig_atomic_t g_running = 1;
 static void handle_signal(int sig)
 {
@@ -86,6 +75,10 @@ static HttpResp dispatch(HttpReq req, Ctx *ctx)
         if (strcmp(req.method, "GET") == 0)    return handle_goal_get(req, ctx);
         if (strcmp(req.method, "POST") == 0)   return handle_goal_decompose(req, ctx);
     }
+    if (strncmp(p, "/tasks/goal/", 12) == 0 && strcmp(req.method, "GET") == 0)
+        return handle_task_list(req, ctx);
+    if (strcmp(p, "/tasks") == 0 && strcmp(req.method, "POST") == 0)
+        return handle_task_create(req, ctx);
     if (strncmp(p, "/tasks/", 7) == 0) {
         if (strcmp(req.method, "PUT") == 0)    return handle_task_update(req, ctx);
         if (strcmp(req.method, "POST") == 0)   return handle_task_execute(req, ctx);
@@ -94,6 +87,10 @@ static HttpResp dispatch(HttpReq req, Ctx *ctx)
     if (strcmp(p, "/auth/register") == 0)      return handle_register(req, ctx);
     if (strcmp(p, "/auth/login")    == 0)      return handle_login(req, ctx);
     if (strcmp(p, "/auth/refresh")  == 0)      return handle_refresh(req, ctx);
+    if (strcmp(p, "/outcomes") == 0 && strcmp(req.method, "POST") == 0)
+        return handle_outcome_store(req, ctx);
+    if (strncmp(p, "/outcome/", 9) == 0 && strcmp(req.method, "GET") == 0)
+        return handle_outcome_get(req, ctx);
     {
         HttpResp r;
         memset(&r, 0, sizeof(r));

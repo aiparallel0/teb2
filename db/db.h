@@ -20,4 +20,7 @@ TaskResult list_tasks(Db *db, TaskQuery q) __attribute__((warn_unused_result));
 UserResult fetch_user(Db *db, UserQuery q) __attribute__((warn_unused_result));
 UserResult store_user(Db *db, UserQuery q) __attribute__((warn_unused_result));
 
+OutcomeResult store_outcome(Db *db, OutcomeQuery q) __attribute__((warn_unused_result));
+OutcomeResult fetch_outcome(Db *db, OutcomeQuery q) __attribute__((warn_unused_result));
+
 #endif /* DB_H */
