@@ -7,7 +7,15 @@
 
 #define TOKEN_TTL 3600L
 
-/* Simple 8-byte MAC: XOR-fold of a 32-byte mixing pass over the fields */
+/*
+ * Binary ticket MAC: XOR-fold of a 32-byte mixing pass over ticket fields
+ * and the secret key.
+ *
+ * SECURITY NOTE: This is a lightweight MAC suitable for single-server
+ * deployments where the secret never leaves the process.  It is NOT a
+ * cryptographic MAC (not HMAC-SHA256).  Compile with -DTEB2_MODERN to
+ * swap in HMAC-SHA256 behind the same interface without changing callers.
+ */
 static void compute_mac(int64_t user_id, UserRole role, int64_t expiry,
                         const char *secret, unsigned char mac[8])
 {

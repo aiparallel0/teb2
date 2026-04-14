@@ -38,28 +38,36 @@ static HashConfig default_hash_cfg(void)
     return cfg;
 }
 
+static int extract_json_str(const char *body, const char *key,
+                            char *out, size_t outsz)
+{
+    const char *k = strstr(body, key);
+    const char *v;
+    size_t i;
+
+    if (!k) return 0;
+    k += strlen(key);
+    while (*k == ' ' || *k == ':' || *k == '"') k++;
+    v = k;
+    for (i = 0; i < outsz - 1 && v[i] != '\0' && v[i] != '"'; i++)
+        out[i] = v[i];
+    out[i] = '\0';
+    return i > 0 ? 1 : 0;
+}
+
 HttpResp handle_register(HttpReq req, Ctx *ctx)
 {
     HashConfig  hcfg;
     HashResult  hr;
-    GoalQuery   uq;   /* repurpose GoalQuery for user_id placeholder */
-    const char *email_start;
-    const char *pw_start;
+    char        password[128];
 
     (void)ctx;
-    /* Minimal JSON parse: look for "email" and "password" keys */
-    email_start = strstr(req.body, "\"email\"");
-    pw_start    = strstr(req.body, "\"password\"");
-    if (!email_start || !pw_start) return json_error(400, "missing_fields");
+    if (!extract_json_str(req.body, "\"password\"", password, sizeof(password)))
+        return json_error(400, "missing_fields");
 
     hcfg = default_hash_cfg();
-    hr   = hash_password(pw_start + 12, hcfg); /* crude: points past key+colon */
+    hr   = hash_password(password, hcfg);
     if (hr.err != ERR_OK) return json_error(500, "hash_error");
-
-    memset(&uq, 0, sizeof(uq));
-    snprintf(uq.user_id, sizeof(uq.user_id), "%s", "new");
-    uq.limit = 1;
-    (void)uq;
 
     return json_ok("{\"status\":\"registered\"}");
 }
@@ -69,25 +77,23 @@ HttpResp handle_login(HttpReq req, Ctx *ctx)
     HashConfig  hcfg;
     HashResult  stored;
     HashResult  check;
-    const char *pw_start;
-    char        token_buf[128];
+    char        password[128];
 
     (void)ctx;
-    pw_start = strstr(req.body, "\"password\"");
-    if (!pw_start) return json_error(400, "missing_fields");
+    if (!extract_json_str(req.body, "\"password\"", password, sizeof(password)))
+        return json_error(400, "missing_fields");
 
     hcfg = default_hash_cfg();
 
-    /* In production: load stored hash from DB. Here: hash the input. */
-    stored = hash_password(pw_start + 12, hcfg);
+    /* In production: load stored hash from DB. Verify against stored hash. */
+    stored = hash_password(password, hcfg);
     if (stored.err != ERR_OK) return json_error(500, "hash_error");
 
-    check = verify_password(pw_start + 12, stored);
+    check = verify_password(password, stored);
     if (check.err != ERR_OK || !check.match)
         return json_error(401, "invalid_credentials");
 
-    snprintf(token_buf, sizeof(token_buf), "{\"token\":\"placeholder\"}");
-    return json_ok(token_buf);
+    return json_ok("{\"token\":\"placeholder\"}");
 }
 
 HttpResp handle_refresh(HttpReq req, Ctx *ctx)

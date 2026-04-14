@@ -6,7 +6,11 @@
 /*
  * XOR cipher with an 8-byte key, cycling over the key bytes.
  * The encrypt and decrypt operations are identical (XOR is its own inverse).
- * Compile-time flag TEB2_MODERN swaps to ChaCha20-Poly1305.
+ *
+ * SECURITY NOTE: This is the era-build placeholder cipher.  It provides
+ * confidentiality only against passive observers who do not know the key.
+ * It is NOT secure against known-plaintext attacks.  Compile with
+ * -DTEB2_MODERN to swap in ChaCha20-Poly1305 behind the same interface.
  */
 static void xor_block(const unsigned char *in, size_t len,
                       const Key8 *key, unsigned char *out)

@@ -16,8 +16,11 @@ static int64_t parse_cents(const char *payload)
 {
     int64_t cents = 0;
     const char *p = payload;
-    while (*p >= '0' && *p <= '9')
-        cents = cents * 10 + (*p++ - '0');
+    while (*p >= '0' && *p <= '9') {
+        int64_t digit = *p++ - '0';
+        if (cents > (INT64_MAX - digit) / 10) return INT64_MAX;
+        cents = cents * 10 + digit;
+    }
     return cents;
 }
 

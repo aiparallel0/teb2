@@ -101,12 +101,16 @@ HttpResp handle_goal_list(HttpReq req, Ctx *ctx)
 
     pos = snprintf(buf, sizeof(buf), "[");
     for (i = 0; i < gr.count; i++) {
-        pos += snprintf(buf + pos, sizeof(buf) - (size_t)pos,
+        int added;
+        if (pos < 0 || (size_t)pos >= sizeof(buf) - 2) break;
+        added = snprintf(buf + pos, sizeof(buf) - (size_t)pos,
                         "%s{\"id\":%lld,\"title\":\"%s\"}",
                         i ? "," : "", (long long)gr.rows[i].id,
                         gr.rows[i].title);
+        if (added > 0) pos += added;
     }
-    pos += snprintf(buf + pos, sizeof(buf) - (size_t)pos, "]");
+    if (pos >= 0 && (size_t)pos < sizeof(buf) - 1)
+        pos += snprintf(buf + pos, sizeof(buf) - (size_t)pos, "]");
     (void)pos;
     return json_ok(buf);
 }

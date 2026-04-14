@@ -38,26 +38,30 @@ HttpResult send_request(HttpReq req, Cred *cred)
     HttpResult r;
     char buf[HTTP_BUFSIZE];
     char host[128];
+    const char *reqpath;
     int  port = 80;
     int  fd;
     ssize_t n;
     const char *path_start;
+    const char *slash;
+    const char *host_end;
+    size_t hlen;
 
     memset(&r, 0, sizeof(r));
     memset(buf,  0, sizeof(buf));
     (void)cred; /* credentials applied as Authorization header when present */
 
-    /* Minimal URL parse: strip scheme, extract host[:port]/path */
+    /* Parse URL: strip scheme, extract host[:port] and /path separately */
     path_start = req.path;
     if (strncmp(req.path, "http://", 7) == 0) path_start = req.path + 7;
-    {
-        size_t hlen = strlen(path_start);
-        const char *slash = strchr(path_start, '/');
-        if (slash) hlen = (size_t)(slash - path_start);
-        if (hlen >= sizeof(host)) hlen = sizeof(host) - 1;
-        memcpy(host, path_start, hlen);
-        host[hlen] = '\0';
-    }
+
+    slash    = strchr(path_start, '/');
+    host_end = slash ? slash : (path_start + strlen(path_start));
+    hlen     = (size_t)(host_end - path_start);
+    if (hlen >= sizeof(host)) hlen = sizeof(host) - 1;
+    memcpy(host, path_start, hlen);
+    host[hlen] = '\0';
+
     {
         char *colon = strchr(host, ':');
         if (colon) { port = atoi(colon + 1); *colon = '\0'; }
@@ -66,13 +70,10 @@ HttpResult send_request(HttpReq req, Cred *cred)
     fd = open_connection(host, port);
     if (fd < 0) { r.err = ERR_IO; return r; }
 
-    {
-        const char *reqpath = strchr(path_start + strlen(host), '/');
-        if (!reqpath) reqpath = "/";
-        snprintf(buf, sizeof(buf),
-                 "%s %s HTTP/1.0\r\nHost: %s\r\nContent-Length: %zu\r\n\r\n",
-                 req.method, reqpath, host, req.body_len);
-    }
+    reqpath = slash ? slash : "/";
+    snprintf(buf, sizeof(buf),
+             "%s %s HTTP/1.0\r\nHost: %s\r\nContent-Length: %zu\r\n\r\n",
+             req.method, reqpath, host, req.body_len);
 
     if (write(fd, buf, strlen(buf)) < 0) {
         close(fd);
@@ -91,7 +92,7 @@ HttpResult send_request(HttpReq req, Cred *cred)
     buf[n] = '\0';
 
     r.status = 0;
-    if (n > 9) r.status = atoi(buf + 9); /* "HTTP/1.x " */
+    if (n > 9) r.status = atoi(buf + 9); /* "HTTP/1.x NNN " */
     {
         const char *body = strstr(buf, "\r\n\r\n");
         if (body) {
