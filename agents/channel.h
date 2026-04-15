@@ -12,4 +12,9 @@ AgentMsg research_handle(AgentMsg msg);
 AgentMsg measure_handle(AgentMsg msg);
 AgentMsg learn_handle(AgentMsg msg);
 
+/* teb3 agents */
+AgentMsg decompose_handle(AgentMsg msg);
+AgentMsg plugin_handle(AgentMsg msg);
+AgentMsg oauth_handle(AgentMsg msg);
+
 #endif /* CHANNEL_H */

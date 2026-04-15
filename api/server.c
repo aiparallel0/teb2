@@ -63,18 +63,6 @@ void write_response(int fd, HttpResp resp)
     }
 }
 
-static HttpResp not_found(void)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = 404;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body),
-                                  "{\"error\":\"not_found\"}");
-    snprintf(r.content_type, sizeof(r.content_type), "%s",
-             "application/json");
-    return r;
-}
-
 static HttpResp options_resp(void)
 {
     HttpResp r;
@@ -158,5 +146,5 @@ HttpResp dispatch(HttpReq req, Ctx *ctx)
     if (strcmp(p, "/spending") == 0
         && strcmp(req.method, "POST") == 0)
         return handle_spend_record(req, ctx);
-    return not_found();
+    return dispatch_ext(req, ctx);
 }

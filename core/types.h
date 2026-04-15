@@ -122,7 +122,8 @@ typedef struct { Db *db; Config *cfg; UserClaims *user; } Ctx;
 
 typedef enum {
     MSG_GOAL_NEW = 0, MSG_CLARIFY, MSG_TASK_DONE, MSG_EXEC_REQ,
-    MSG_FINANCE_REQ, MSG_NUDGE, MSG_CHECKIN, MSG_MEASURE, MSG_LEARN, MSG_RESULT
+    MSG_FINANCE_REQ, MSG_NUDGE, MSG_CHECKIN, MSG_MEASURE, MSG_LEARN, MSG_RESULT,
+    MSG_DECOMPOSE, MSG_PLUGIN, MSG_OAUTH, MSG_NOTIFY
 } MsgTag;
 typedef struct { MsgTag tag; int64_t id; char user_id[64]; char payload[512]; Err err; } AgentMsg;
 

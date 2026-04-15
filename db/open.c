@@ -108,6 +108,11 @@ Err db_open(const char *path, Db *out)
         out->handle = NULL;
         return ERR_DB;
     }
+    if (db_init_ext(out) != ERR_OK) {
+        sqlite3_close(out->handle);
+        out->handle = NULL;
+        return ERR_DB;
+    }
     return ERR_OK;
 }
 
