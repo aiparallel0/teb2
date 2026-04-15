@@ -52,7 +52,10 @@ GoalResult store_goal(Db *db, GoalQuery q)
 {
     GoalResult r;
     sqlite3_stmt *stmt = NULL;
-    const char *sql = "INSERT INTO goals(user_id,title) VALUES(?,?) RETURNING id;";
+    const char *sql =
+        "INSERT INTO goals(user_id,title,description,parent_id)"
+        " VALUES(?,?,?,?)"
+        " RETURNING id,user_id,title,description,status,parent_id,created_at;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -60,11 +63,12 @@ GoalResult store_goal(Db *db, GoalQuery q)
     }
     sqlite3_bind_text(stmt, 1, q.user_id, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, q.title[0] ? q.title : "untitled", -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, q.description, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 4, q.parent_id);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
-        r.rows[0].id = sqlite3_column_int64(stmt, 0);
-        snprintf(r.rows[0].user_id, sizeof(r.rows[0].user_id), "%s", q.user_id);
-        r.count = 1;
-        r.err   = ERR_OK;
+        r.rows[0] = row_to_goal(stmt);
+        r.count   = 1;
+        r.err     = ERR_OK;
     } else {
         r.err = ERR_DB;
     }
@@ -99,8 +103,11 @@ GoalResult update_goal(Db *db, GoalQuery q)
 {
     GoalResult r;
     sqlite3_stmt *stmt = NULL;
-    const char *sql = "UPDATE goals SET status=? WHERE id=?"
-                      " RETURNING id,user_id,title,description,status,parent_id,created_at;";
+    const char *sql =
+        "UPDATE goals SET status=?, title=CASE WHEN ?='' THEN title ELSE ? END,"
+        " description=CASE WHEN ?='' THEN description ELSE ? END"
+        " WHERE id=?"
+        " RETURNING id,user_id,title,description,status,parent_id,created_at;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
     if (q.id <= 0) { r.err = ERR_NOT_FOUND; return r; }
@@ -108,7 +115,11 @@ GoalResult update_goal(Db *db, GoalQuery q)
         r.err = ERR_DB; return r;
     }
     sqlite3_bind_text(stmt, 1, q.status[0] ? q.status : "pending", -1, SQLITE_STATIC);
-    sqlite3_bind_int64(stmt, 2, q.id);
+    sqlite3_bind_text(stmt, 2, q.title, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, q.title, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 4, q.description, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 5, q.description, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 6, q.id);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         r.rows[0] = row_to_goal(stmt);
         r.count   = 1;

@@ -98,11 +98,13 @@ typedef struct { Err err; char output[4096]; size_t output_len; } BrowserResult;
 
 typedef struct {
     int64_t id; char user_id[64]; char title[256]; char status[32]; int limit; int offset;
+    char description[512]; int64_t parent_id;
 } GoalQuery;
 typedef struct { Err err; Goal rows[16]; int count; } GoalResult;
 
 typedef struct {
     int64_t id; int64_t goal_id; char user_id[64]; char title[256]; char status[32]; int limit;
+    char description[512]; char agent[64];
 } TaskQuery;
 typedef struct { Err err; Task rows[16]; int count; } TaskResult;
 

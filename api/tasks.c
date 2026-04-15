@@ -33,21 +33,20 @@ HttpResp handle_task_update(HttpReq req, Ctx *ctx)
     TaskQuery q;
     const char *idstr;
     TaskResult tr;
-
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_TASK_WRITE))
         return json_error(403, "forbidden");
-
     memset(&q, 0, sizeof(q));
     idstr = strrchr(req.path, '/');
     q.id  = idstr ? (int64_t)strtoll(idstr + 1, NULL, 10) : 0;
     if (q.id <= 0) return json_error(400, "bad_id");
-
     extract_json_str(req.body, "\"status\"", q.status, sizeof(q.status));
+    extract_json_str(req.body, "\"description\"", q.description,
+                     sizeof(q.description));
+    extract_json_str(req.body, "\"agent\"", q.agent, sizeof(q.agent));
     tr = update_task(ctx->db, q);
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
-
     return json_ok("{\"status\":\"updated\"}");
 }
 
@@ -56,21 +55,17 @@ HttpResp handle_task_execute(HttpReq req, Ctx *ctx)
     TaskQuery q;
     TaskResult tr;
     const char *idstr;
-
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_TASK_WRITE))
         return json_error(403, "forbidden");
-
     memset(&q, 0, sizeof(q));
     idstr = strrchr(req.path, '/');
     q.id  = idstr ? (int64_t)strtoll(idstr + 1, NULL, 10) : 0;
     if (q.id <= 0) return json_error(400, "bad_id");
     snprintf(q.status, sizeof(q.status), "%s", "executing");
-
     tr = update_task(ctx->db, q);
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
-
     return json_ok("{\"status\":\"executing\"}");
 }
 
@@ -80,20 +75,16 @@ HttpResp handle_task_status(HttpReq req, Ctx *ctx)
     TaskResult tr;
     char buf[256];
     const char *idstr;
-
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_TASK_READ))
         return json_error(403, "forbidden");
-
     memset(&q, 0, sizeof(q));
     idstr = strrchr(req.path, '/');
     q.id  = idstr ? (int64_t)strtoll(idstr + 1, NULL, 10) : 0;
     if (q.id <= 0) return json_error(400, "bad_id");
-
     tr = fetch_task(ctx->db, q);
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
-
     snprintf(buf, sizeof(buf),
              "{\"id\":%lld,\"status\":\"%s\"}",
              (long long)tr.rows[0].id, tr.rows[0].status);
@@ -126,6 +117,8 @@ HttpResp handle_task_create(HttpReq req, Ctx *ctx)
     snprintf(q.user_id, sizeof(q.user_id), "%lld",
              (long long)ctx->user->user_id);
     extract_json_str(req.body, "\"title\"", q.title, sizeof(q.title));
+    extract_json_str(req.body, "\"description\"", q.description,
+                     sizeof(q.description));
     if (extract_json_str(req.body, "\"goal_id\"", gid, sizeof(gid)))
         q.goal_id = strtoll(gid, NULL, 10);
     if (q.goal_id <= 0) return json_error(400, "bad_goal_id");
