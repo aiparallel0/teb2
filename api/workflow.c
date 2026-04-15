@@ -92,15 +92,26 @@ HttpResp handle_run_create(HttpReq req, Ctx *ctx)
     pid = fork();
     if (pid == 0) {
         Db cdb;
+        const char *final_status = "failed";
         memset(&cdb, 0, sizeof(cdb));
         if (db_open(ctx->cfg->db_path, &cdb) == ERR_OK) {
             job.db     = &cdb;
             job.cfg    = ctx->cfg;
             job.run_id = rr.run.id;
             (void)execute_steps(job, tr);
-            ur = update_run_status(&cdb, rr.run.id, "done", "");
+            final_status = "done";
+            ur = update_run_status(&cdb, rr.run.id, final_status, "");
             (void)ur;
             db_close(&cdb);
+        } else {
+            /* Attempt status update with a fresh handle to avoid stuck 'running' */
+            Db fdb;
+            memset(&fdb, 0, sizeof(fdb));
+            if (db_open(ctx->cfg->db_path, &fdb) == ERR_OK) {
+                ur = update_run_status(&fdb, rr.run.id, final_status, "");
+                (void)ur;
+                db_close(&fdb);
+            }
         }
         _exit(0);
     }

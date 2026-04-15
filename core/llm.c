@@ -6,20 +6,21 @@
 #include "core/llm.h"
 #include "exec/exec.h"
 
-/* Minimal JSON string escaping — handles backslash and double-quote */
+/* Minimal JSON string escaping — handles backslash, double-quote, newline */
 static void esc_json(const char *src, char *dst, size_t dsz)
 {
     size_t i = 0, o = 0;
-    while (src[i] && o + 2 < dsz) {
-        if (src[i] == '"' || src[i] == '\\') {
-            if (o + 3 >= dsz) break;
-            dst[o++] = '\\';
-        } else if (src[i] == '\n') {
-            if (o + 3 >= dsz) break;
+    /* Reserve 1 byte for null terminator; for 2-char escapes need o+2 < dsz */
+    while (src[i] && o + 1 < dsz) {
+        if (src[i] == '\n') {
+            if (o + 2 >= dsz) break;
             dst[o++] = '\\'; dst[o++] = 'n'; i++; continue;
         } else if (src[i] == '\r') {
-            if (o + 3 >= dsz) break;
+            if (o + 2 >= dsz) break;
             dst[o++] = '\\'; dst[o++] = 'r'; i++; continue;
+        } else if (src[i] == '"' || src[i] == '\\') {
+            if (o + 2 >= dsz) break;
+            dst[o++] = '\\';
         }
         dst[o++] = src[i++];
     }
