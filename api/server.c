@@ -24,6 +24,16 @@ HttpReq parse_request(const char *raw, size_t len)
     if (!sp2) return req;
     snprintf(req.path, sizeof(req.path), "%.*s",
              (int)(sp2 - p), p);
+    {
+        char *qm = strchr(req.path, '?');
+        if (qm) {
+            const char *tk = strstr(qm, "token=");
+            if (tk && !req.auth_header[0])
+                snprintf(req.auth_header, sizeof(req.auth_header),
+                         "Bearer %s", tk + 6);
+            *qm = '\0';
+        }
+    }
     auth = strstr(raw, "\nAuthorization: ");
     if (auth) {
         auth += 16;
@@ -87,14 +97,20 @@ static HttpResp dispatch_internal(HttpReq req, Ctx *ctx)
     const char *p = req.path;
     const char *rlkey;
     if (strcmp(req.method, "OPTIONS") == 0) return options_resp();
-    if (strcmp(p, "/") == 0 && strcmp(req.method, "GET") == 0)
-        return handle_ui_index(req, ctx);
-    if (strcmp(p, "/app.js") == 0 && strcmp(req.method, "GET") == 0)
-        return handle_ui_appjs(req, ctx);
-    if (strcmp(p, "/healthz") == 0 && strcmp(req.method, "GET") == 0)
-        return handle_healthz(req, ctx);
-    if (strcmp(p, "/metrics") == 0 && strcmp(req.method, "GET") == 0)
-        return handle_metrics(req, ctx);
+    if (strcmp(req.method, "GET") == 0) {
+        if (strcmp(p, "/") == 0) return handle_ui_index(req, ctx);
+        if (strcmp(p, "/app.js") == 0) return handle_ui_appjs(req, ctx);
+        if (strcmp(p, "/style.css") == 0) return handle_ui_style(req, ctx);
+        if (strcmp(p, "/goals.js") == 0) return handle_ui_goalsjs(req, ctx);
+        if (strcmp(p, "/tasks.js") == 0) return handle_ui_tasksjs(req, ctx);
+        if (strcmp(p, "/finance.js") == 0) return handle_ui_financejs(req, ctx);
+        if (strcmp(p, "/collab.js") == 0) return handle_ui_collabjs(req, ctx);
+        if (strcmp(p, "/dash.js") == 0) return handle_ui_dashjs(req, ctx);
+        if (strcmp(p, "/enterprise.js") == 0) return handle_ui_enterprisejs(req, ctx);
+        if (strcmp(p, "/analytics.js") == 0) return handle_ui_analyticsjs(req, ctx);
+        if (strcmp(p, "/healthz") == 0) return handle_healthz(req, ctx);
+        if (strcmp(p, "/metrics") == 0) return handle_metrics(req, ctx);
+    }
     rlkey = req.fwd_for[0] ? req.fwd_for : "unknown";
     if (strcmp(p, "/auth/register") == 0 || strcmp(p, "/auth/login") == 0) {
         if (!rl_check(rlkey, 10))
