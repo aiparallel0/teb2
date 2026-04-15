@@ -119,3 +119,29 @@ TaskResult list_tasks(Db *db, TaskQuery q)
     sqlite3_finalize(stmt);
     return r;
 }
+
+TaskResult update_task(Db *db, TaskQuery q)
+{
+    TaskResult r;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "UPDATE tasks SET status=? WHERE id=?"
+                      " RETURNING id,goal_id,user_id,title,description,status,agent,created_at;";
+    memset(&r, 0, sizeof(r));
+    if (!db || !db->handle) { r.err = ERR_DB; return r; }
+    if (q.id <= 0) { r.err = ERR_NOT_FOUND; return r; }
+    ensure_tasks_schema(db->handle);
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        r.err = ERR_DB; return r;
+    }
+    sqlite3_bind_text(stmt, 1, q.status[0] ? q.status : "pending", -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 2, q.id);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        r.rows[0] = row_to_task(stmt);
+        r.count   = 1;
+        r.err     = ERR_OK;
+    } else {
+        r.err = ERR_NOT_FOUND;
+    }
+    sqlite3_finalize(stmt);
+    return r;
+}

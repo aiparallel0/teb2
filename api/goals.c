@@ -133,9 +133,22 @@ HttpResp handle_goal_list(HttpReq req, Ctx *ctx)
 
 HttpResp handle_goal_decompose(HttpReq req, Ctx *ctx)
 {
-    (void)req;
+    GoalQuery q;
+    GoalResult gr;
+    const char *idstr;
+
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_GOAL_WRITE))
         return json_error(403, "forbidden");
+
+    memset(&q, 0, sizeof(q));
+    idstr = strrchr(req.path, '/');
+    q.id  = idstr ? (int64_t)strtoll(idstr + 1, NULL, 10) : 0;
+    if (q.id <= 0) return json_error(400, "bad_id");
+    snprintf(q.status, sizeof(q.status), "%s", "decomposing");
+
+    gr = update_goal(ctx->db, q);
+    if (gr.err != ERR_OK) return json_error(500, "db_error");
+
     return json_ok("{\"status\":\"decompose_queued\"}");
 }

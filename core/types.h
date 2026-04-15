@@ -93,12 +93,12 @@ typedef struct { Err err; int status; char body[4096]; size_t body_len; } HttpRe
 typedef struct { Err err; char output[4096]; size_t output_len; } BrowserResult;
 
 typedef struct {
-    int64_t id; char user_id[64]; char title[256]; int limit; int offset;
+    int64_t id; char user_id[64]; char title[256]; char status[32]; int limit; int offset;
 } GoalQuery;
 typedef struct { Err err; Goal rows[16]; int count; } GoalResult;
 
 typedef struct {
-    int64_t id; int64_t goal_id; char user_id[64]; char title[256]; int limit;
+    int64_t id; int64_t goal_id; char user_id[64]; char title[256]; char status[32]; int limit;
 } TaskQuery;
 typedef struct { Err err; Task rows[16]; int count; } TaskResult;
 

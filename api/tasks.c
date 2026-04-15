@@ -27,11 +27,12 @@ static HttpResp json_ok(const char *body)
     return r;
 }
 
+static int extract_json_str(const char *body, const char *key, char *out, size_t outsz);
 HttpResp handle_task_update(HttpReq req, Ctx *ctx)
 {
     TaskQuery q;
-    TaskResult tr;
     const char *idstr;
+    TaskResult tr;
 
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_TASK_WRITE))
@@ -42,11 +43,11 @@ HttpResp handle_task_update(HttpReq req, Ctx *ctx)
     q.id  = idstr ? (int64_t)strtoll(idstr + 1, NULL, 10) : 0;
     if (q.id <= 0) return json_error(400, "bad_id");
 
-    tr = fetch_task(ctx->db, q);
+    extract_json_str(req.body, "\"status\"", q.status, sizeof(q.status));
+    tr = update_task(ctx->db, q);
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
 
-    (void)req;
     return json_ok("{\"status\":\"updated\"}");
 }
 
@@ -64,12 +65,12 @@ HttpResp handle_task_execute(HttpReq req, Ctx *ctx)
     idstr = strrchr(req.path, '/');
     q.id  = idstr ? (int64_t)strtoll(idstr + 1, NULL, 10) : 0;
     if (q.id <= 0) return json_error(400, "bad_id");
+    snprintf(q.status, sizeof(q.status), "%s", "executing");
 
-    tr = fetch_task(ctx->db, q);
+    tr = update_task(ctx->db, q);
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
 
-    (void)req;
     return json_ok("{\"status\":\"executing\"}");
 }
 
@@ -93,7 +94,6 @@ HttpResp handle_task_status(HttpReq req, Ctx *ctx)
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
 
-    (void)req;
     snprintf(buf, sizeof(buf),
              "{\"id\":%lld,\"status\":\"%s\"}",
              (long long)tr.rows[0].id, tr.rows[0].status);
