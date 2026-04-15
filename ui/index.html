@@ -1,23 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>teb2</title>
-<link rel="stylesheet" href="/style.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>teb2</title><link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header>
-<h1>teb2</h1>
-<div id="auth-bar">
-<span id="health"></span>
+<header><h1>teb2</h1>
+<div id="auth-bar"><span id="health"></span>
 <input id="email" type="text" placeholder="email">
 <input id="password" type="password" placeholder="password">
-<button onclick="doLogin()">Login</button>
-<button onclick="doRegister()">Register</button>
-<button class="danger" onclick="doLogout()">Logout</button>
-</div>
-</header>
+<button onclick="doLogin()">Login</button><button onclick="doRegister()">Register</button>
+<button class="danger" onclick="doLogout()">Logout</button></div></header>
 <nav>
 <button data-view="goals" class="active" onclick="showView('goals')">Goals</button>
 <button data-view="tasks" onclick="showView('tasks')">Tasks</button>
@@ -27,20 +20,18 @@
 <button data-view="community" onclick="showView('community')">Community</button>
 <button data-view="workflows" onclick="showView('workflows')">Workflows</button>
 <button data-view="measure" onclick="showView('measure')">Measure</button>
+<button data-view="enterprise" onclick="showView('enterprise')">Enterprise</button>
+<button data-view="analytics" onclick="showView('analytics')">Analytics</button>
 </nav>
 <main>
 <div id="error-bar"></div>
-<!-- Goals -->
 <div id="v-goals" class="view active">
 <div class="section"><h2>Goals</h2>
 <div class="row"><input id="goal-title" placeholder="Goal title">
 <input id="goal-desc" placeholder="Description (optional)">
 <button class="btn btn-green" onclick="createGoal()">Add Goal</button></div>
 <div id="goal-list"></div></div>
-<div class="section" id="goal-detail"></div>
-<div id="goal-tasks"></div>
-</div>
-<!-- Tasks -->
+<div class="section" id="goal-detail"></div><div id="goal-tasks"></div></div>
 <div id="v-tasks" class="view">
 <div class="section"><h2>Tasks</h2>
 <div class="row"><input id="task-filter-goal" placeholder="Goal ID" style="max-width:6rem">
@@ -49,10 +40,7 @@
 <input id="task-goal-id" placeholder="Goal ID" style="max-width:6rem">
 <input id="task-desc" placeholder="Description">
 <button class="btn btn-green" onclick="createTask()">Add Task</button></div>
-<div id="task-list"></div></div>
-<div id="task-detail"></div>
-</div>
-<!-- Finance -->
+<div id="task-list"></div></div><div id="task-detail"></div></div>
 <div id="v-finance" class="view">
 <div class="section"><h2>Budget</h2>
 <div class="row"><input id="budget-amount" placeholder="Limit ($)" style="max-width:8rem">
@@ -64,9 +52,7 @@
 <div class="row"><input id="sched-task" placeholder="Task ID" style="max-width:6rem">
 <input id="sched-time" type="datetime-local">
 <button class="btn btn-blue" onclick="createSchedule()">Schedule</button></div>
-<div id="sched-list"></div></div>
-</div>
-<!-- Collab -->
+<div id="sched-list"></div></div></div>
 <div id="v-collab" class="view">
 <div class="section"><h2>Workspaces</h2>
 <div class="row"><input id="ws-name" placeholder="Workspace name">
@@ -86,22 +72,17 @@
 <button class="btn btn-green" onclick="sendChat()">Send</button></div></div>
 <div class="section"><h2>Integrations</h2>
 <div class="row"><input id="integ-name" placeholder="Integration name">
-<button class="btn btn-blue" onclick="toggleInteg()">Enable</button></div></div>
-</div>
-<!-- Dashboard -->
+<button class="btn btn-blue" onclick="toggleInteg()">Enable</button></div></div></div>
 <div id="v-dash" class="view">
 <div class="section"><h2>Search</h2>
 <div class="row"><input id="search-q" placeholder="Search goals and tasks">
 <button class="btn btn-blue" onclick="doSearch()">Search</button></div>
 <div id="search-results"></div></div>
-<div class="section"><h2>Gamification</h2>
-<div id="streak-info"></div>
+<div class="section"><h2>Gamification</h2><div id="streak-info"></div>
 <div class="row"><input id="xp-amount" placeholder="XP" style="max-width:5rem">
 <input id="xp-reason" placeholder="Reason">
 <button class="btn btn-green" onclick="creditXP()">Award XP</button></div>
-<div id="leaderboard"></div></div>
-</div>
-<!-- Community -->
+<div id="leaderboard"></div></div></div>
 <div id="v-community" class="view">
 <div class="section"><h2>Blog</h2>
 <div class="row"><input id="blog-title" placeholder="Post title">
@@ -110,16 +91,12 @@
 <div id="blog-list" style="margin-top:.75rem"></div></div>
 <div class="section"><h2>Feature Votes</h2>
 <div class="row"><input id="vote-feature" placeholder="Feature name">
-<button class="btn btn-blue" onclick="voteFeat()">Vote</button></div></div>
-</div>
-<!-- Workflows -->
+<button class="btn btn-blue" onclick="voteFeat()">Vote</button></div></div></div>
 <div id="v-workflows" class="view">
 <div class="section"><h2>Workflow Runs</h2>
 <div class="row"><input id="run-goal" placeholder="Goal ID" style="max-width:6rem">
 <button class="btn btn-green" onclick="createRun()">Start Run</button></div>
-<div id="run-status"></div></div>
-</div>
-<!-- Measure -->
+<div id="run-status"></div></div></div>
 <div id="v-measure" class="view">
 <div class="section"><h2>Outcomes</h2>
 <div class="row"><input id="outcome-task" placeholder="Task ID" style="max-width:6rem">
@@ -128,14 +105,44 @@
 <div class="section"><h2>Learnings</h2>
 <div class="row"><input id="learn-goal" placeholder="Goal ID" style="max-width:6rem">
 <input id="learn-insight" placeholder="Insight">
-<button class="btn btn-green" onclick="storeLearning()">Store</button></div></div>
-</div>
+<button class="btn btn-green" onclick="storeLearning()">Store</button></div></div></div>
+<div id="v-enterprise" class="view">
+<div class="section"><h2>Organization</h2>
+<div class="row"><input id="org-name" placeholder="Org name">
+<input id="org-domain" placeholder="Domain">
+<button class="btn btn-green" onclick="createOrg()">Create Org</button></div>
+<div id="org-detail"></div></div>
+<div class="section"><h2>SSO Validation</h2>
+<div class="row"><input id="sso-org" placeholder="Org ID" style="max-width:5rem">
+<input id="sso-provider" placeholder="Provider (e.g. okta)">
+<button class="btn btn-blue" onclick="validateSSO()">Validate</button></div>
+<div id="sso-result"></div></div>
+<div class="section"><h2>IP Allowlist</h2>
+<div class="row"><input id="ip-org" placeholder="Org ID" style="max-width:5rem">
+<input id="ip-cidr" placeholder="CIDR (e.g. 10.0.0.0/8)">
+<button class="btn btn-blue" onclick="checkIP()">Check</button></div>
+<div id="ip-result"></div></div></div>
+<div id="v-analytics" class="view">
+<div class="section"><h2>Progress Snapshots</h2>
+<div class="row"><input id="snap-goal" placeholder="Goal ID" style="max-width:6rem">
+<input id="snap-pct" placeholder="%" type="number" min="0" max="100" style="max-width:5rem">
+<button class="btn btn-green" onclick="storeSnapshot()">Store</button></div></div>
+<div class="section"><h2>ROI</h2>
+<div class="row"><input id="roi-goal" placeholder="Goal ID" value="1" style="max-width:6rem">
+<button class="btn btn-blue" onclick="loadROI()">Load</button></div>
+<div id="roi-detail"></div></div>
+<div class="section"><h2>Time Tracking</h2>
+<div class="row"><input id="time-task" placeholder="Task ID" style="max-width:6rem">
+<input id="time-mins" placeholder="Minutes" type="number" style="max-width:6rem">
+<button class="btn btn-green" onclick="logTime()">Log</button></div></div>
+<div class="section"><h2>Nudges</h2>
+<div class="row"><input id="nudge-msg" placeholder="Nudge message">
+<button class="btn btn-green" onclick="sendNudge()">Send</button></div>
+<div id="nudge-list"></div></div></div>
 </main>
-<script src="/app.js"></script>
-<script src="/goals.js"></script>
-<script src="/tasks.js"></script>
-<script src="/finance.js"></script>
-<script src="/collab.js"></script>
-<script src="/dash.js"></script>
+<script src="/app.js"></script><script src="/goals.js"></script>
+<script src="/tasks.js"></script><script src="/finance.js"></script>
+<script src="/collab.js"></script><script src="/dash.js"></script>
+<script src="/enterprise.js"></script><script src="/analytics.js"></script>
 </body>
 </html>

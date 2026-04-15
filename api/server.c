@@ -106,6 +106,8 @@ static HttpResp dispatch_internal(HttpReq req, Ctx *ctx)
         if (strcmp(p, "/finance.js") == 0) return handle_ui_financejs(req, ctx);
         if (strcmp(p, "/collab.js") == 0) return handle_ui_collabjs(req, ctx);
         if (strcmp(p, "/dash.js") == 0) return handle_ui_dashjs(req, ctx);
+        if (strcmp(p, "/enterprise.js") == 0) return handle_ui_enterprisejs(req, ctx);
+        if (strcmp(p, "/analytics.js") == 0) return handle_ui_analyticsjs(req, ctx);
         if (strcmp(p, "/healthz") == 0) return handle_healthz(req, ctx);
         if (strcmp(p, "/metrics") == 0) return handle_metrics(req, ctx);
     }

@@ -130,5 +130,7 @@ HttpResp handle_ui_tasksjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_financejs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_collabjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_dashjs(HttpReq req, Ctx *ctx);
+HttpResp handle_ui_enterprisejs(HttpReq req, Ctx *ctx);
+HttpResp handle_ui_analyticsjs(HttpReq req, Ctx *ctx);
 
 #endif /* API_H */

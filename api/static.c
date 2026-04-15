@@ -79,3 +79,15 @@ HttpResp handle_ui_dashjs(HttpReq req, Ctx *ctx)
     (void)req; (void)ctx;
     return serve_file("ui/dash.js", "application/javascript");
 }
+
+HttpResp handle_ui_enterprisejs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/enterprise.js", "application/javascript");
+}
+
+HttpResp handle_ui_analyticsjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/analytics.js", "application/javascript");
+}
