@@ -90,6 +90,9 @@ HttpResp handle_blog_store(HttpReq req, Ctx *ctx);
 HttpResp handle_blog_get(HttpReq req, Ctx *ctx);
 HttpResp handle_vote_upsert(HttpReq req, Ctx *ctx);
 
+/* api/sse.c */
+HttpResp handle_sse_subscribe(HttpReq req, Ctx *ctx);
+
 /* api/routes.c */
 HttpResp dispatch_ext(HttpReq req, Ctx *ctx);
 

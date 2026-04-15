@@ -146,5 +146,8 @@ HttpResp dispatch(HttpReq req, Ctx *ctx)
     if (strcmp(p, "/spending") == 0
         && strcmp(req.method, "POST") == 0)
         return handle_spend_record(req, ctx);
+    if (strcmp(p, "/events") == 0
+        && strcmp(req.method, "GET") == 0)
+        return handle_sse_subscribe(req, ctx);
     return dispatch_ext(req, ctx);
 }
