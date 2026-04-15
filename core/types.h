@@ -13,7 +13,10 @@ typedef enum {
 } Permission;
 typedef struct { unsigned char data[64]; size_t len; } Bytes;
 typedef struct { unsigned char k[8]; } Key8;
-typedef struct { char db_path[256]; char secret[128]; int port; } Config;
+typedef struct {
+    char db_path[256]; char secret[128]; int port;
+    char smtp_host[256]; int smtp_port; char smtp_user[128]; char smtp_pass[128];
+} Config;
 
 typedef struct {
     int64_t  id;
@@ -68,6 +71,8 @@ typedef struct {
     char   body[4096];
     size_t body_len;
     char   auth_header[256];
+    int    fd;
+    char   fwd_for[256];
 } HttpReq;
 
 typedef struct {
@@ -85,13 +90,13 @@ typedef struct { Err err; char output[4096]; size_t output_len; } BrowserResult;
 
 typedef struct {
     int64_t id; char user_id[64]; char title[256]; char status[32]; int limit; int offset;
-    char description[512]; int64_t parent_id;
+    char description[512]; int64_t parent_id; int64_t cursor;
 } GoalQuery;
 typedef struct { Err err; Goal rows[16]; int count; } GoalResult;
 
 typedef struct {
     int64_t id; int64_t goal_id; char user_id[64]; char title[256]; char status[32]; int limit;
-    char description[512]; char agent[64];
+    char description[512]; char agent[64]; int64_t cursor;
 } TaskQuery;
 typedef struct { Err err; Task rows[16]; int count; } TaskResult;
 
@@ -125,7 +130,9 @@ typedef enum {
     MSG_FINANCE_REQ, MSG_NUDGE, MSG_CHECKIN, MSG_MEASURE, MSG_LEARN, MSG_RESULT,
     MSG_DECOMPOSE, MSG_PLUGIN, MSG_OAUTH, MSG_NOTIFY
 } MsgTag;
-typedef struct { MsgTag tag; int64_t id; char user_id[64]; char payload[512]; Err err; } AgentMsg;
+typedef struct {
+    MsgTag tag; int64_t id; char user_id[64]; char payload[512]; Err err; Db *db;
+} AgentMsg;
 
 typedef struct {
     int64_t id;
@@ -150,17 +157,5 @@ typedef struct {
     int64_t id; int64_t goal_id; char insight[512]; int limit;
 } LearnQuery;
 typedef struct { Err err; Learning learning; } LearnResult;
-
-typedef struct { int64_t id; int64_t task_id; int64_t run_at; } SchedEntry;
-typedef struct { int64_t id; int64_t task_id; int64_t run_at; int limit; } SchedQuery;
-typedef struct { Err err; SchedEntry entry; } SchedResult;
-
-typedef struct { int64_t id; char user_id[64]; int64_t limit_cents; int64_t spent_cents; } Budget;
-typedef struct { int64_t id; char user_id[64]; int64_t amount_cents; } BudgetQuery;
-typedef struct { Err err; Budget budget; } BudgetResult;
-
-typedef struct { int64_t id; char agent[64]; char key[128]; char val[512]; int64_t ts; } MemEntry;
-typedef struct { int64_t id; char agent[64]; char key[128]; char val[512]; int limit; } MemQuery;
-typedef struct { Err err; MemEntry entry; } MemResult;
 
 #endif /* TYPES_H */

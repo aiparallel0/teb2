@@ -24,4 +24,18 @@ typedef struct { int fd; int open; } SseConn;
 void        sse_write(SseConn *c, const char *event, const char *data);
 void        sse_close(SseConn *c);
 
+/* smtp */
+typedef struct { char to[256]; char subject[256]; char body[1024]; } MailReq;
+typedef struct { Err err; int sent; } MailResult;
+MailResult  send_mail(MailReq req, Config *cfg)
+    __attribute__((warn_unused_result));
+
+/* oauth */
+OAuthResult oauth_exchange(const char *provider, const char *code,
+    const char *redirect_uri, Config *cfg, Db *db, const char *user_id)
+    __attribute__((warn_unused_result));
+OAuthResult oauth_refresh(const char *provider, const char *refresh_tok,
+    Config *cfg, Db *db, const char *user_id)
+    __attribute__((warn_unused_result));
+
 #endif /* EXEC_H */

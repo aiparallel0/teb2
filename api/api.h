@@ -96,4 +96,27 @@ HttpResp handle_sse_subscribe(HttpReq req, Ctx *ctx);
 /* api/routes.c */
 HttpResp dispatch_ext(HttpReq req, Ctx *ctx);
 
+/* api/assets.c */
+HttpResp handle_asset_upload(HttpReq req, Ctx *ctx);
+HttpResp handle_asset_get(HttpReq req, Ctx *ctx);
+
+/* api/notify.c */
+HttpResp handle_notify_email(HttpReq req, Ctx *ctx);
+
+/* api/workflow.c */
+HttpResp handle_run_create(HttpReq req, Ctx *ctx);
+HttpResp handle_run_get(HttpReq req, Ctx *ctx);
+
+/* api/search.c */
+HttpResp handle_search(HttpReq req, Ctx *ctx);
+
+/* api/metrics.c */
+void     metrics_inc(const char *method, const char *path, int status);
+HttpResp handle_healthz(HttpReq req, Ctx *ctx);
+HttpResp handle_metrics(HttpReq req, Ctx *ctx);
+
+/* api/oauth.c */
+HttpResp handle_oauth_redirect(HttpReq req, Ctx *ctx);
+HttpResp handle_oauth_callback(HttpReq req, Ctx *ctx);
+
 #endif /* API_H */

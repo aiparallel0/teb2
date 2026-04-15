@@ -79,4 +79,27 @@ BlogResult store_blog(Db *db, BlogQuery q) __attribute__((warn_unused_result));
 BlogResult fetch_blog(Db *db, BlogQuery q) __attribute__((warn_unused_result));
 VoteResult store_vote(Db *db, VoteQuery q) __attribute__((warn_unused_result));
 
+/* assets */
+AssetResult store_asset(Db *db, AssetQuery q) __attribute__((warn_unused_result));
+AssetResult fetch_asset(Db *db, AssetQuery q) __attribute__((warn_unused_result));
+
+/* workflow */
+RunResult  store_run(Db *db, RunQuery q) __attribute__((warn_unused_result));
+RunResult  fetch_run(Db *db, RunQuery q) __attribute__((warn_unused_result));
+RunResult  update_run_status(Db *db, int64_t run_id,
+               const char *status, const char *error_msg)
+    __attribute__((warn_unused_result));
+StepResult store_step(Db *db, StepQuery q) __attribute__((warn_unused_result));
+StepResult list_steps(Db *db, int64_t run_id) __attribute__((warn_unused_result));
+StepResult update_step_status(Db *db, int64_t step_id,
+               const char *status, const char *result)
+    __attribute__((warn_unused_result));
+
+/* search */
+SearchResult full_text_search(Db *db, SearchQuery q)
+    __attribute__((warn_unused_result));
+Err index_entity(Db *db, const char *entity,
+                 int64_t entity_id, const char *content)
+    __attribute__((warn_unused_result));
+
 #endif /* DB_H */

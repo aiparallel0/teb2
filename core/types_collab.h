@@ -21,6 +21,7 @@ typedef struct {
 
 typedef struct {
     int64_t id; int64_t ws_id; char user_id[64]; char role_name[32]; int limit;
+    int64_t cursor;
 } CollabQuery;
 
 typedef struct { Err err; Collaborator rows[16]; int count; } CollabResult;
@@ -32,6 +33,7 @@ typedef struct {
 
 typedef struct {
     int64_t id; int64_t ws_id; char sender_id[64]; char body[512]; int limit;
+    int64_t cursor;
 } ChatQuery;
 
 typedef struct { Err err; ChatMessage rows[16]; int count; } ChatResult;
