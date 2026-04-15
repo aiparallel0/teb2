@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560"
+     font-family="system-ui, sans-serif">
+
+  <!-- Body background -->
+  <rect width="900" height="560" fill="#111"/>
+
+  <!-- ─── HEADER ─── -->
+  <rect width="900" height="50" fill="#1a1a1a"/>
+  <line x1="0" y1="50" x2="900" y2="50" stroke="#333" stroke-width="1"/>
+
+  <!-- teb2 title -->
+  <text x="16" y="31" font-size="17" font-weight="600" fill="#eee">teb2</text>
+
+  <!-- Auth bar: email input -->
+  <rect x="440" y="12" width="120" height="26" rx="4" fill="#222" stroke="#444" stroke-width="1"/>
+  <text x="450" y="30" font-size="12" fill="#666">email</text>
+
+  <!-- Auth bar: password input -->
+  <rect x="568" y="12" width="120" height="26" rx="4" fill="#222" stroke="#444" stroke-width="1"/>
+  <text x="578" y="30" font-size="12" fill="#666">password</text>
+
+  <!-- Login button -->
+  <rect x="696" y="12" width="54" height="26" rx="4" fill="#2563eb"/>
+  <text x="723" y="30" font-size="12" fill="#fff" text-anchor="middle">Login</text>
+
+  <!-- Register button -->
+  <rect x="756" y="12" width="68" height="26" rx="4" fill="#2563eb"/>
+  <text x="790" y="30" font-size="12" fill="#fff" text-anchor="middle">Register</text>
+
+  <!-- Logout button -->
+  <rect x="830" y="12" width="56" height="26" rx="4" fill="#dc2626"/>
+  <text x="858" y="30" font-size="12" fill="#fff" text-anchor="middle">Logout</text>
+
+  <!-- ─── NAV BAR ─── -->
+  <rect x="0" y="50" width="900" height="38" fill="#1a1a1a"/>
+  <line x1="0" y1="88" x2="900" y2="88" stroke="#222" stroke-width="1"/>
+
+  <!-- Goals tab (active) -->
+  <text x="28" y="74" font-size="13" fill="#eee" text-anchor="middle">Goals</text>
+  <line x1="4" y1="88" x2="52" y2="88" stroke="#2563eb" stroke-width="2"/>
+
+  <!-- Other tabs (muted) -->
+  <text x="90" y="74" font-size="13" fill="#888" text-anchor="middle">Tasks</text>
+  <text x="146" y="74" font-size="13" fill="#888" text-anchor="middle">Finance</text>
+  <text x="206" y="74" font-size="13" fill="#888" text-anchor="middle">Collab</text>
+  <text x="272" y="74" font-size="13" fill="#888" text-anchor="middle">Dashboard</text>
+  <text x="344" y="74" font-size="13" fill="#888" text-anchor="middle">Community</text>
+  <text x="418" y="74" font-size="13" fill="#888" text-anchor="middle">Workflows</text>
+  <text x="484" y="74" font-size="13" fill="#888" text-anchor="middle">Measure</text>
+  <text x="548" y="74" font-size="13" fill="#888" text-anchor="middle">Enterprise</text>
+  <text x="616" y="74" font-size="13" fill="#888" text-anchor="middle">Analytics</text>
+
+  <!-- ─── MAIN CONTENT ─── -->
+
+  <!-- Section heading: Goals -->
+  <text x="16" y="118" font-size="14" fill="#aaa">Goals</text>
+
+  <!-- Input row -->
+  <!-- Goal title input -->
+  <rect x="16" y="128" width="280" height="30" rx="4" fill="#222" stroke="#444" stroke-width="1"/>
+  <text x="26" y="148" font-size="12" fill="#666">Goal title</text>
+
+  <!-- Description input -->
+  <rect x="304" y="128" width="280" height="30" rx="4" fill="#222" stroke="#444" stroke-width="1"/>
+  <text x="314" y="148" font-size="12" fill="#666">Description (optional)</text>
+
+  <!-- Add Goal button -->
+  <rect x="592" y="128" width="90" height="30" rx="4" fill="#16a34a"/>
+  <text x="637" y="148" font-size="13" fill="#fff" text-anchor="middle">Add Goal</text>
+
+  <!-- ─── Goal Card 1: Launch MVP ─── -->
+  <rect x="16" y="174" width="868" height="68" rx="6" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+
+  <!-- Card title -->
+  <text x="28" y="197" font-size="14" font-weight="600" fill="#eee">Launch MVP</text>
+
+  <!-- Status badge: active (green) -->
+  <rect x="116" y="183" width="50" height="18" rx="3" fill="#16a34a33"/>
+  <text x="141" y="196" font-size="11" fill="#4ade80" text-anchor="middle">active</text>
+
+  <!-- Meta text -->
+  <text x="28" y="224" font-size="12" fill="#888">created just now</text>
+
+  <!-- ─── Goal Card 2: Improve retention ─── -->
+  <rect x="16" y="254" width="868" height="68" rx="6" fill="#1a1a1a" stroke="#333" stroke-width="1"/>
+
+  <!-- Card title -->
+  <text x="28" y="277" font-size="14" font-weight="600" fill="#eee">Improve retention</text>
+
+  <!-- Status badge: pending (yellow) -->
+  <rect x="160" y="263" width="56" height="18" rx="3" fill="#eab30833"/>
+  <text x="188" y="276" font-size="11" fill="#facc15" text-anchor="middle">pending</text>
+
+  <!-- Meta text -->
+  <text x="28" y="304" font-size="12" fill="#888">created 2 days ago</text>
+
+</svg>
