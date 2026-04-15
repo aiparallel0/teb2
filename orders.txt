@@ -1,339 +1,74 @@
-Repository: aiparallel0/teb2  
-Language: C99, K&R braces, 4-space indent, /* */ comments only, 166 LOC cap per
-file, no malloc/free, no fprintf/printf/stderr in new code, variables declared
-at top of block, __attribute__((warn_unused_result)) on all non-void db/exec
-declarations in headers.
-
-Implement the following 9 items. All must compile clean under the existing
-Makefile CFLAGS (-std=c99 -pedantic -Wall -Wextra -Werror -fanalyzer). Update
-Makefile SRCS for every new .c file.
+Repository: aiparallel0/teb2
+All C rules apply to any .c/.h files (K&R braces, C99, 166 LOC cap,
+no malloc/free, no fprintf/printf/stderr, /* */ comments only).
+The frontend is vanilla JS only — no frameworks, no build step, no npm.
 
 ══════════════════════════════════════════
-1. SSE — complete api/sse.c + main.c fork
+PART A — BACKEND FIXES (aiparallel0/teb2)
 ══════════════════════════════════════════
-Problem: handle_sse_subscribe() returns immediately; main.c closes conn after
-one response; no ws_id scoping; SseConn is never used.
 
-Fix main.c:
-  After resp = dispatch(req, &ctx);
-  if resp.status == 0 (SSE hijacked), do NOT call write_response() or
-  close(conn) — the forked child owns the fd. Otherwise write_response +
-  close as today.
-  Before dispatch(), fork(). In the child: drop srv fd (close(srv)), run
-  dispatch, then _exit(0). In the parent: close(conn), continue loop.
-  Use SIGCHLD with SIG_IGN to reap children automatically:
-    signal(SIGCHLD, SIG_IGN);
+── A1. OAuth cfg=NULL segfault ─────────────────────────────
+Problem: agents/oauth.c calls oauth_exchange(..., NULL, msg.db, ...)
+passing NULL for Config*. exec/oauth_http.c dereferences cfg for
+client credentials → segfault at runtime.
 
-Replace api/sse.c entirely:
-  handle_sse_subscribe(HttpReq req, Ctx *ctx):
-    - Auth check (existing pattern, return json_error 401/403 on fail)
-    - Parse ws_id: strtoll(req.path + 8, NULL, 10)  (path: /sse/chat/<ws_id>)
-    - Write SSE headers directly to req.fd:
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/event-stream\r\n"
-        "Cache-Control: no-cache\r\n"
-        "Connection: keep-alive\r\n"
-        "Access-Control-Allow-Origin: *\r\n"
-        "\r\n"
-    - SseConn c = {req.fd, 1};
-    - int64_t last_id = 0;
-    - Loop while c.open:
-        sleep(2);
-        q.ws_id = ws_id; q.cursor = last_id; q.limit = 16;
-        r = list_chats(ctx->db, q);
-        for each row: build json buf; sse_write(&c,"message",buf);
-                      last_id = row.id;
-    - Return zeroed HttpResp (status=0 signals caller to skip write_response)
+Fix: Add Config *cfg to AgentMsg in core/types.h:
+  typedef struct {
+      MsgTag tag; int64_t id; char user_id[64];
+      char payload[512]; Err err; Db *db; Config *cfg;
+  } AgentMsg;
 
-Add int fd to HttpReq in core/types.h.
-Populate req.fd = conn in main.c before calling parse_request().
+Update agents/coord.c and every site that constructs an AgentMsg
+(api/workflow.c, api/oauth.c, api/sse.c) to set .cfg = ctx->cfg.
 
-Rename existing /events route in api/server.c to /sse/chat/ prefix:
-  strncmp(p, "/sse/chat/", 10) == 0 && GET → handle_sse_subscribe
+In agents/oauth.c handle_exchange() and handle_refresh(), replace
+the NULL argument with msg.cfg.
 
-ChatQuery must have int64_t cursor field (needed for item 5 below, but add it
-now so list_chats SQL uses WHERE id > cursor ORDER BY id ASC LIMIT ?).
+── A2. Asset upload body cap ───────────────────────────────
+Problem: HttpReq.body is char body[4096]. Uploads > 4096 bytes are
+silently truncated before handle_asset_upload sees them. No error.
 
-══════════════════════════════════════════
-2. FILE / ASSET STORAGE
-══════════════════════════════════════════
-Schema — add to db/open_ext.c SCHEMA_EXT and db/schema.sql:
-  CREATE TABLE IF NOT EXISTS assets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL, filename TEXT NOT NULL,
-      mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
-      size_bytes INTEGER NOT NULL DEFAULT 0, path TEXT NOT NULL,
-      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));
+Fix: In api/assets.c handle_asset_upload(), before writing to disk,
+check req.body_len >= sizeof(req.body) - 1. If so, return
+json_error(413, "payload_too_large"). This makes the limit explicit
+and safe rather than a silent truncation. Document in api/api.h
+comment that body max is 4095 bytes.
 
-Add to core/types_ext.h: Asset, AssetQuery {id,user_id[64],filename[256],
-mime_type[128],size_bytes,path[512],limit}, AssetResult {Err,Asset}.
+── A3. SSE body JSON-escape ────────────────────────────────
+Problem: In api/sse.c, chat message body is written raw into
+sse_write() data field. A body containing " or \n or \ breaks
+the SSE event stream framing.
 
-db/assets.c:
-  AssetResult store_asset(Db *db, AssetQuery q);  /* INSERT RETURNING */
-  AssetResult fetch_asset(Db *db, AssetQuery q);  /* SELECT by id */
-Declare both in db/db.h.
+Fix: In the polling loop in handle_sse_subscribe(), escape the body
+before snprintf using the existing json_escape() from api/escape.h:
+  char eb[512];
+  json_escape(cr.rows[i].body, eb, sizeof(eb));
+  snprintf(buf, sizeof(buf),
+           "{\"id\":%lld,\"body\":\"%s\"}",
+           (long long)cr.rows[i].id, eb);
 
-api/assets.c:
-  handle_asset_upload (POST /assets):
-    auth required; filename from ?filename= query param (scan req.path after '?');
-    mime from extension (.png→image/png .jpg→image/jpeg .pdf→application/pdf
-    else application/octet-stream);
-    mkdir("/tmp/teb_assets",0700) ignoring EEXIST;
-    path = /tmp/teb_assets/<user_id>_<time(NULL)>_<filename>;
-    open O_CREAT|O_WRONLY|O_TRUNC 0600, write req.body[0..req.body_len], close;
-    store_asset(); return {"id":N,"filename":"...","size_bytes":N}
+Add #include "api/escape.h" to api/sse.c.
 
-  handle_asset_get (GET /assets/<id>):
-    auth required; fetch_asset(); 404 on ERR_NOT_FOUND;
-    open O_RDONLY, read up to 4096 bytes into resp.body;
-    set resp.status=200, resp.content_type=asset.mime_type, resp.body_len;
-    return resp directly (not json_ok).
+── A4. Metrics bucket overflow indicator ───────────────────
+Problem: api/metrics.c silently drops route metrics after 16 unique
+(method, path, status) combinations.
 
-Declare in api/api.h. Route in api/routes.c.
-
-══════════════════════════════════════════
-3. SMTP DELIVERY
-══════════════════════════════════════════
-Add to Config in core/types.h:
-  char smtp_host[256]; int smtp_port; char smtp_user[128]; char smtp_pass[128];
-
-Add to core/config.c apply_env_line(): SMTP_HOST, SMTP_PORT, SMTP_USER,
-SMTP_PASS keys (same copy_strip / atoi pattern already used for DB_PATH/PORT).
-
-Add to exec/exec.h:
-  typedef struct { char to[256]; char subject[256]; char body[1024]; } MailReq;
-  typedef struct { Err err; int sent; } MailResult;
-  MailResult send_mail(MailReq req, Config *cfg)
-      __attribute__((warn_unused_result));
-
-exec/smtp.c:
-  static void b64_encode(const unsigned char *in, size_t inlen,
-                         char *out, size_t outlen);  /* standard alphabet */
-  static int smtp_recv(int fd, char *buf, size_t len); /* read line, return code */
-  static int smtp_send(int fd, const char *line);     /* write line + \r\n */
-
-  send_mail:
-    getaddrinfo(cfg->smtp_host, NULL, &hints, &res); connect port cfg->smtp_port;
-    smtp_recv greeting; smtp_send "EHLO teb"; smtp_recv;
-    smtp_send "AUTH LOGIN"; smtp_recv;
-    b64 user → smtp_send; smtp_recv;
-    b64 pass → smtp_send; smtp_recv;
-    MAIL FROM, RCPT TO, DATA, headers+body+\r\n., QUIT;
-    if any recv code >= 500 → close, return {ERR_IO,0};
-    close; return {ERR_OK,1};
-
-api/notify.c:
-  handle_notify_email (POST /notify/email):
-    auth + PERM_TASK_WRITE; extract "to","subject","body" via extract_json_str;
-    send_mail(); return {"sent":true} or json_error(502,"smtp_error").
-Declare in api/api.h. Route in api/routes.c.
-
-══════════════════════════════════════════
-4. WORKFLOW RUN LOG
-══════════════════════════════════════════
-Schema — add to db/open_ext.c and db/schema.sql:
-  workflow_runs  (id, goal_id, status TEXT DEFAULT 'pending',
-                  started_at, finished_at DEFAULT 0, error_msg TEXT DEFAULT '')
-  workflow_steps (id, run_id FK, step_index, agent TEXT, payload TEXT DEFAULT '',
-                  status TEXT DEFAULT 'pending', result TEXT DEFAULT '',
-                  created_at)
-
-Add to core/types_ext.h: WorkflowRun, WorkflowStep, RunQuery {id,goal_id,
-status[16],limit}, RunResult {Err,WorkflowRun}, StepQuery {id,run_id,agent[32],
-payload[512],limit}, StepResult {Err,WorkflowStep,steps[32],count}.
-
-db/workflow.c (six functions):
-  store_run, fetch_run, update_run_status(Db*,int64_t run_id,
-    const char*status,const char*error_msg),
-  store_step, list_steps(Db*,int64_t run_id),
-  update_step_status(Db*,int64_t step_id,const char*status,const char*result).
-All declared in db/db.h.
-
-api/workflow.c:
-  handle_run_create (POST /runs):
-    auth; extract goal_id; store_run();
-    build AgentMsg{MSG_GOAL_NEW, goal_id, user_id, payload=goal_id as string};
-    call coord_handle(msg); store_step per agent result;
-    on step err: sleep(1), retry once; if still err mark "error";
-    update_run_status "done" or "error";
-    return {"run_id":N,"status":"done|error"}.
-
-  handle_run_get (GET /runs/<id>):
-    auth; fetch_run(); list_steps(); return JSON with run fields + steps array.
-
-Declare in api/api.h. Route in api/routes.c.
-
-══════════════════════════════════════════
-5. CURSOR PAGINATION
-══════════════════════════════════════════
-Add to api/json.c (declare in api/json.h):
-  int64_t extract_cursor(const char *path);
-  /* scan for ?cursor= or &cursor=, strtoll value, return 0 if absent */
-
-Add int64_t cursor to: GoalQuery, TaskQuery, CollabQuery, ChatQuery
-(core/types.h / core/types_collab.h). Add to XpQuery (core/types_ext.h).
-
-Update SQL in: db/goals.c list_goals, db/tasks.c list_tasks,
-db/collab.c list_collabs, db/chat.c list_chats →
-  WHERE <scope_col>=? AND id > ? ORDER BY id ASC LIMIT ?
-  (bind cursor as second param; if cursor==0 the condition is always true)
-
-db/gamification.c list_xp: add OFFSET (int)cursor LIMIT ? to leaderboard query.
-
-Update handlers handle_goal_list, handle_task_list, handle_collab_list,
-handle_chat_list, handle_leaderboard to:
-  1. q.cursor = extract_cursor(req.path)
-  2. Wrap response: {"data":[...],"next_cursor":N}
-     N = last row's id (0 if count==0)
-
-══════════════════════════════════════════
-6. FTS5 SEARCH
-══════════════════════════════════════════
-Add to db/open_ext.c and db/schema.sql:
-  CREATE VIRTUAL TABLE IF NOT EXISTS search_idx USING fts5(
-      entity, entity_id UNINDEXED, content);
-
-Add to core/types_ext.h:
-  SearchQuery {query[256], entity[32], limit},
-  SearchHit   {entity[32], entity_id, snippet[256]},
-  SearchResult{Err, hits[32], count}.
-
-db/search.c:
-  SearchResult full_text_search(Db *db, SearchQuery q);
-    SELECT entity,entity_id,snippet(search_idx,2,'','','...',10)
-    FROM search_idx WHERE search_idx MATCH ?
-    [AND entity=? if q.entity[0]] LIMIT ?;
-
-  Err index_entity(Db *db, const char *entity,
-                   int64_t entity_id, const char *content);
-    INSERT INTO search_idx(entity,entity_id,content) VALUES(?,?,?);
-
-Both declared in db/db.h.
-
-Call index_entity() after successful INSERT in:
-  db/goals.c store_goal   → entity="goal", content=title+" "+description
-  db/tasks.c store_task   → entity="task", content=title+" "+description
-  db/community.c store_blog→ entity="blog", content=title+" "+body
-(use local char buf[768]; snprintf to concatenate)
-
-api/search.c:
-  handle_search (GET /search?q=text[&entity=goal]):
-    auth; scan req.path for q= and entity= params;
-    full_text_search(); return {"data":[{entity,entity_id,snippet},...]}
-    json_error(400,"missing_q") if q empty.
-Declare in api/api.h. Route in api/routes.c.
-
-══════════════════════════════════════════
-7. RATE LIMITING
-══════════════════════════════════════════
-New file core/ratelimit.h:
-  #define RL_BUCKETS 256
-  typedef struct { char key[128]; int count; int window_start; } RlBucket;
-  int rl_check(const char *key, int max_per_minute);
-
-core/ratelimit.c:
-  static RlBucket rl_table[RL_BUCKETS];  /* zero-init by C99 */
-  djb2 hash → index; if now-window_start>=60 reset; count++;
-  return count<=max_per_minute.
-
-Add char fwd_for[256] to HttpReq (core/types.h).
-In api/server.c parse_request(): scan for "\nX-Forwarded-For: ", copy until
-\r\n into req.fwd_for.
-
-In api/server.c dispatch(), before first route check:
-  key = req.fwd_for[0] ? req.fwd_for : "unknown";
-  auth routes (/auth/register, /auth/login): rl_check(key,10);
-  all others: rl_check(key,120);
-  if !allowed: return json_error(429,"rate_limited");
-
-#include "core/ratelimit.h" in api/server.c.
-
-══════════════════════════════════════════
-8. HEALTH + METRICS
-══════════════════════════════════════════
-api/metrics.c:
-  typedef struct { char method[8]; char path[32]; int status; long count; }
-      MetricBucket;
-  static MetricBucket mb[16]; static int mb_count=0;
-
-  void metrics_inc(const char *method, const char *path, int status);
-    linear scan mb[0..mb_count]; increment matching bucket;
-    if no match and mb_count<16: add new bucket.
-
-  handle_healthz (GET /healthz, no auth):
-    return json_ok with {"status":"ok","ts":<time(NULL)>}
-
-  handle_metrics (GET /metrics, no auth):
-    build Prometheus plain text in resp.body:
-      teb_requests_total{method="%s",path="%s",status="%d"} %ld\n per bucket;
-    resp.content_type="text/plain"; resp.status=200; return resp.
-
-Declare metrics_inc, handle_healthz, handle_metrics in api/api.h.
-
-In api/server.c: rename current dispatch() body to dispatch_internal() (static).
-New dispatch():
-  HttpResp r = dispatch_internal(req, ctx);
-  metrics_inc(req.method, req.path, r.status);
-  return r;
-
-Route /healthz and /metrics at TOP of dispatch_internal() before auth, no
-rate-limit check for these two paths.
-
-══════════════════════════════════════════
-9. REAL OAUTH FLOWS
-══════════════════════════════════════════
-Add to exec/exec.h:
-  OAuthResult oauth_exchange(const char *provider, const char *code,
-      const char *redirect_uri, Config *cfg, Db *db, const char *user_id)
-      __attribute__((warn_unused_result));
-  OAuthResult oauth_refresh(const char *provider, const char *refresh_tok,
-      Config *cfg, Db *db, const char *user_id)
-      __attribute__((warn_unused_result));
-
-exec/oauth_http.c:
-  static const char *token_url(const char *p); /* google/github/slack hard-coded */
-  static void uppercase(const char *in, char *out, size_t n);
-  static void url_encode(const char *in, char *out, size_t n);
-    /* encode space→+, non-alnum non-.-_~→%XX */
-
-  oauth_exchange: getenv(<PROVIDER>_CLIENT_ID/SECRET); build POST body
-    grant_type=authorization_code&code=...&redirect_uri=...&client_id=...
-    &client_secret=...; populate HttpReq; send_request(hr,NULL);
-    extract_json_str access_token+refresh_token from response;
-    store_oauth(db,q); return OAuthResult.
-
-  oauth_refresh: same pattern, grant_type=refresh_token&refresh_token=...
-
-Add Db *db to AgentMsg in core/types.h:
-  typedef struct { MsgTag tag; int64_t id; char user_id[64];
-                   char payload[512]; Err err; Db *db; } AgentMsg;
-Update agents/coord.c and all AgentMsg construction sites to set .db.
-
-Replace agents/oauth.c stub bodies:
-  "state:<provider>" → 16 bytes from /dev/urandom → hex32; store_mem agent="oauth"
-    key="state_<provider>"; return state in result.payload.
-  "exchange:<p>:<code>:<ruri>" → parse, call oauth_exchange().
-  "refresh:<p>:<rtok>"        → call oauth_refresh().
-
-api/oauth.c:
-  handle_oauth_redirect (GET /oauth/redirect/<provider>):
-    auth; dispatch AgentMsg state; read <PROVIDER>_CLIENT_ID from env;
-    hard-coded auth URLs (google/github/slack); return {"url":"..."}.
-
-  handle_oauth_callback (POST /oauth/callback):
-    auth; extract provider,code,state,redirect_uri from body;
-    fetch_mem agent="oauth" key="state_<provider>"; compare state;
-    if mismatch return json_error(400,"state_mismatch");
-    dispatch exchange AgentMsg; return {"provider":"...","access_token":"..."}.
-
-Declare both in api/api.h. Route in api/routes.c.
+Fix: Add a static long mb_overflow counter. Increment it when
+mb_count == METRIC_SLOTS and no match found. In handle_metrics(),
+append one final line to the output:
+  teb_routes_dropped_total %ld\n
+using mb_overflow. Declare mb_overflow as static long mb_overflow = 0
 
 ══════════════════════════════════════════
 VALIDATION
 ══════════════════════════════════════════
-1. make succeeds, zero warnings.
-2. No file exceeds 166 LOC; split into _2.c if needed.
-3. No malloc/free/strdup. No fprintf/printf/stderr in new code.
-4. All variables declared at top of their block.
-5. K&R braces throughout; /* */ comments only.
-6. Makefile SRCS updated for every new .c file.
+1. make in aiparallel0/teb2 must succeed, zero warnings.
+2. No new .c file exceeds 166 LOC.
+3. No malloc/free/strdup in C code.
+4. No fprintf/printf/stderr in new C code.
+5. ui/index.html and ui/app.js committed under ui/ directory in teb2.
+6. GET / returns ui/index.html with Content-Type: text/html.
+7. GET /app.js returns ui/app.js with Content-Type: application/javascript.
+8. The frontend makes zero assumptions about the Python teb repo.
+   It uses only the teb2 JSON API. No shared sessions, no shared DB,
+   no shared auth. teb and teb2 can run independently on different ports.
