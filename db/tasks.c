@@ -54,8 +54,10 @@ TaskResult store_task(Db *db, TaskQuery q)
 {
     TaskResult r;
     sqlite3_stmt *stmt = NULL;
-    const char *sql = "INSERT INTO tasks(goal_id,user_id,title) VALUES(?,?,?)"
-                      " RETURNING id;";
+    const char *sql =
+        "INSERT INTO tasks(goal_id,user_id,title,description,agent)"
+        " VALUES(?,?,?,?,?)"
+        " RETURNING id,goal_id,user_id,title,description,status,agent,created_at;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -64,12 +66,12 @@ TaskResult store_task(Db *db, TaskQuery q)
     sqlite3_bind_int64(stmt, 1, q.goal_id);
     sqlite3_bind_text(stmt,  2, q.user_id, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt,  3, q.title[0] ? q.title : "untitled", -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt,  4, q.description, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt,  5, q.agent, -1, SQLITE_STATIC);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
-        r.rows[0].id      = sqlite3_column_int64(stmt, 0);
-        r.rows[0].goal_id = q.goal_id;
-        snprintf(r.rows[0].user_id, sizeof(r.rows[0].user_id), "%s", q.user_id);
-        r.count = 1;
-        r.err   = ERR_OK;
+        r.rows[0] = row_to_task(stmt);
+        r.count   = 1;
+        r.err     = ERR_OK;
     } else {
         r.err = ERR_DB;
     }
@@ -103,8 +105,12 @@ TaskResult update_task(Db *db, TaskQuery q)
 {
     TaskResult r;
     sqlite3_stmt *stmt = NULL;
-    const char *sql = "UPDATE tasks SET status=? WHERE id=?"
-                      " RETURNING id,goal_id,user_id,title,description,status,agent,created_at;";
+    const char *sql =
+        "UPDATE tasks SET status=?,"
+        " description=CASE WHEN ?='' THEN description ELSE ? END,"
+        " agent=CASE WHEN ?='' THEN agent ELSE ? END"
+        " WHERE id=?"
+        " RETURNING id,goal_id,user_id,title,description,status,agent,created_at;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
     if (q.id <= 0) { r.err = ERR_NOT_FOUND; return r; }
@@ -112,7 +118,11 @@ TaskResult update_task(Db *db, TaskQuery q)
         r.err = ERR_DB; return r;
     }
     sqlite3_bind_text(stmt, 1, q.status[0] ? q.status : "pending", -1, SQLITE_STATIC);
-    sqlite3_bind_int64(stmt, 2, q.id);
+    sqlite3_bind_text(stmt, 2, q.description, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, q.description, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 4, q.agent, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 5, q.agent, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 6, q.id);
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         r.rows[0] = row_to_task(stmt);
         r.count   = 1;
