@@ -74,20 +74,26 @@ HttpResp handle_collab_list(HttpReq req, Ctx *ctx)
     CollabResult r;
     char buf[2048];
     int i, off;
+    int64_t next_cursor;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     memset(&q, 0, sizeof(q));
     q.ws_id = strtoll(req.path + 9, NULL, 10);
     q.limit = 16;
+    q.cursor = extract_cursor(req.path);
     r = list_collabs(ctx->db, q);
     if (r.err != ERR_OK) return json_error(500, "db_error");
-    off = snprintf(buf, sizeof(buf), "[");
+    next_cursor = (r.count > 0) ? r.rows[r.count - 1].id : 0;
+    off = snprintf(buf, sizeof(buf), "{\"next_cursor\":%lld,\"items\":[",
+                   (long long)next_cursor);
     for (i = 0; i < r.count && off < (int)sizeof(buf) - 64; i++) {
-        if (i > 0) buf[off++] = ',';
+        if (i > 0 && off < (int)sizeof(buf) - 1) buf[off++] = ',';
         off += snprintf(buf + off, sizeof(buf) - (size_t)off,
             "{\"id\":%lld,\"user_id\":\"%s\"}",
             (long long)r.rows[i].id, r.rows[i].user_id);
     }
-    snprintf(buf + off, sizeof(buf) - (size_t)off, "]");
+    if (off > 0 && (size_t)off < sizeof(buf) - 3)
+        off += snprintf(buf + off, sizeof(buf) - (size_t)off, "]}");
+    (void)off;
     return json_ok(buf);
 }
 
@@ -115,21 +121,27 @@ HttpResp handle_chat_list(HttpReq req, Ctx *ctx)
     ChatResult r;
     char buf[4096];
     int i, off;
+    int64_t next_cursor;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     memset(&q, 0, sizeof(q));
     q.ws_id = strtoll(req.path + 6, NULL, 10);
     q.limit = 16;
+    q.cursor = extract_cursor(req.path);
     r = list_chats(ctx->db, q);
     if (r.err != ERR_OK) return json_error(500, "db_error");
-    off = snprintf(buf, sizeof(buf), "[");
+    next_cursor = (r.count > 0) ? r.rows[r.count - 1].id : 0;
+    off = snprintf(buf, sizeof(buf), "{\"next_cursor\":%lld,\"items\":[",
+                   (long long)next_cursor);
     for (i = 0; i < r.count && off < (int)sizeof(buf) - 128; i++) {
         char eb[512];
         json_escape(r.rows[i].body, eb, sizeof(eb));
-        if (i > 0) buf[off++] = ',';
+        if (i > 0 && off < (int)sizeof(buf) - 1) buf[off++] = ',';
         off += snprintf(buf + off, sizeof(buf) - (size_t)off,
             "{\"id\":%lld,\"body\":\"%s\"}",
             (long long)r.rows[i].id, eb);
     }
-    snprintf(buf + off, sizeof(buf) - (size_t)off, "]");
+    if (off > 0 && (size_t)off < sizeof(buf) - 3)
+        off += snprintf(buf + off, sizeof(buf) - (size_t)off, "]}");
+    (void)off;
     return json_ok(buf);
 }
