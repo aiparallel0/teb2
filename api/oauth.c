@@ -47,6 +47,7 @@ HttpResp handle_oauth_redirect(HttpReq req, Ctx *ctx)
     memset(&msg, 0, sizeof(msg));
     msg.tag = MSG_OAUTH;
     msg.db  = ctx->db;
+    msg.cfg = ctx->cfg;
     snprintf(msg.user_id, sizeof(msg.user_id), "%lld",
              (long long)ar.claims.user_id);
     snprintf(msg.payload, sizeof(msg.payload), "state:%.31s", prov);
@@ -89,6 +90,7 @@ HttpResp handle_oauth_callback(HttpReq req, Ctx *ctx)
     memset(&msg, 0, sizeof(msg));
     msg.tag = MSG_OAUTH;
     msg.db  = ctx->db;
+    msg.cfg = ctx->cfg;
     snprintf(msg.user_id, sizeof(msg.user_id), "%lld",
              (long long)ar.claims.user_id);
     snprintf(msg.payload, sizeof(msg.payload),

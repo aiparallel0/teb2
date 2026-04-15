@@ -50,6 +50,7 @@ HttpResp handle_asset_upload(HttpReq req, Ctx *ctx)
     detect_mime(fn, q.mime_type, sizeof(q.mime_type));
     q.size_bytes = (int64_t)req.body_len;
     (void)mkdir("/tmp/teb_assets", 0700);
+    if (req.body_len >= sizeof(req.body) - 1) return json_error(413, "payload_too_large");
     snprintf(q.path, sizeof(q.path), "/tmp/teb_assets/%s_%lld_%s",
              uid, (long long)time(NULL), fn);
     fd = open(q.path, O_CREAT | O_WRONLY | O_TRUNC, 0600);

@@ -25,7 +25,7 @@ SRCS = core/config.c core/ratelimit.c \
        api/collab.c api/integrations.c api/enterprise.c api/analytics.c \
        api/gamification.c api/community.c api/sse.c \
        api/assets.c api/notify.c api/workflow.c api/search.c \
-       api/metrics.c api/oauth.c \
+       api/metrics.c api/oauth.c api/static.c \
        main.c
 
 OBJS = $(SRCS:.c=.o)

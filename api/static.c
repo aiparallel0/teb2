@@ -1,0 +1,46 @@
+#define _POSIX_C_SOURCE 200809L
+#include <string.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include "core/types.h"
+#include "api/api.h"
+
+/* serve_file — read a file into HttpResp with given content type */
+static HttpResp serve_file(const char *path, const char *ctype)
+{
+    HttpResp resp;
+    int fd;
+    ssize_t nr;
+
+    memset(&resp, 0, sizeof(resp));
+    fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        resp.status = 404;
+        snprintf(resp.content_type, sizeof(resp.content_type),
+                 "text/plain");
+        snprintf(resp.body, sizeof(resp.body), "not found");
+        resp.body_len = 9;
+        return resp;
+    }
+    nr = read(fd, resp.body, sizeof(resp.body) - 1);
+    close(fd);
+    if (nr < 0) nr = 0;
+    resp.body[nr] = '\0';
+    resp.body_len = (size_t)nr;
+    resp.status = 200;
+    snprintf(resp.content_type, sizeof(resp.content_type), "%s", ctype);
+    return resp;
+}
+
+HttpResp handle_ui_index(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/index.html", "text/html");
+}
+
+HttpResp handle_ui_appjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/app.js", "application/javascript");
+}

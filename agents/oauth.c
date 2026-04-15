@@ -64,7 +64,7 @@ static AgentMsg handle_exchange(AgentMsg msg)
     if (!c2) return agent_make_result(msg, ERR_UNKNOWN, "bad_exchange");
     snprintf(code, sizeof(code), "%.*s", (int)(c2 - c1 - 1), c1 + 1);
     snprintf(ruri, sizeof(ruri), "%s", c2 + 1);
-    r = oauth_exchange(prov, code, ruri, NULL, msg.db,  msg.user_id);
+    r = oauth_exchange(prov, code, ruri, msg.cfg, msg.db, msg.user_id);
     if (r.err != ERR_OK)
         return agent_make_result(msg, r.err, "exchange_failed");
     return agent_make_result(msg, ERR_OK, r.tok.access_tok);
@@ -82,7 +82,7 @@ static AgentMsg handle_refresh(AgentMsg msg)
     if (!c1) return agent_make_result(msg, ERR_UNKNOWN, "bad_refresh");
     snprintf(prov, sizeof(prov), "%.*s", (int)(c1 - p), p);
     snprintf(rtok, sizeof(rtok), "%s", c1 + 1);
-    r = oauth_refresh(prov, rtok, NULL, msg.db, msg.user_id);
+    r = oauth_refresh(prov, rtok, msg.cfg, msg.db, msg.user_id);
     if (r.err != ERR_OK)
         return agent_make_result(msg, r.err, "refresh_failed");
     return agent_make_result(msg, ERR_OK, r.tok.access_tok);

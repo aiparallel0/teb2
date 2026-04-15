@@ -11,6 +11,7 @@
 #include "exec/exec.h"
 #include "api/api.h"
 #include "api/json.h"
+#include "api/escape.h"
 
 static const char *SSE_HEADERS =
     "HTTP/1.1 200 OK\r\n"
@@ -52,9 +53,11 @@ HttpResp handle_sse_subscribe(HttpReq req, Ctx *ctx)
         cr = list_chats(ctx->db, q);
         if (cr.err != ERR_OK) continue;
         for (i = 0; i < cr.count && c.open; i++) {
+            char eb[480];
+            json_escape(cr.rows[i].body, eb, sizeof(eb));
             snprintf(buf, sizeof(buf),
                      "{\"id\":%lld,\"body\":\"%s\"}",
-                     (long long)cr.rows[i].id, cr.rows[i].body);
+                     (long long)cr.rows[i].id, eb);
             sse_write(&c, "message", buf);
             last_id = cr.rows[i].id;
         }

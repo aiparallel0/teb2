@@ -11,6 +11,7 @@
 typedef struct { char method[8]; char path[32]; int status; long count; } MetricBucket;
 static MetricBucket mb[METRIC_SLOTS];
 static int mb_count;
+static long mb_overflow;
 
 void metrics_inc(const char *method, const char *path, int status)
 {
@@ -29,6 +30,8 @@ void metrics_inc(const char *method, const char *path, int status)
         mb[mb_count].status = status;
         mb[mb_count].count = 1;
         mb_count++;
+    } else {
+        mb_overflow++;
     }
 }
 
@@ -54,6 +57,12 @@ HttpResp handle_metrics(HttpReq req, Ctx *ctx)
         int w = snprintf(resp.body + off, sizeof(resp.body) - (size_t)off,
             "teb_requests_total{method=\"%s\",path=\"%s\",status=\"%d\"} %ld\n",
             mb[i].method, mb[i].path, mb[i].status, mb[i].count);
+        if (w > 0 && (size_t)(off + w) < sizeof(resp.body))
+            off += w;
+    }
+    if (mb_overflow > 0) {
+        int w = snprintf(resp.body + off, sizeof(resp.body) - (size_t)off,
+            "teb_routes_dropped_total %ld\n", mb_overflow);
         if (w > 0 && (size_t)(off + w) < sizeof(resp.body))
             off += w;
     }
