@@ -6,7 +6,6 @@
 #include "core/errors.h"
 #include "auth/auth.h"
 #include "db/db.h"
-
 static HttpResp json_error(int status, const char *msg)
 {
     HttpResp r;
@@ -98,5 +97,70 @@ HttpResp handle_task_status(HttpReq req, Ctx *ctx)
     snprintf(buf, sizeof(buf),
              "{\"id\":%lld,\"status\":\"%s\"}",
              (long long)tr.rows[0].id, tr.rows[0].status);
+    return json_ok(buf);
+}
+
+static int extract_json_str(const char *body, const char *key,
+                            char *out, size_t outsz)
+{
+    const char *k = strstr(body, key), *v;
+    size_t i;
+    if (!k) return 0;
+    k += strlen(key);
+    while (*k == ' ' || *k == ':' || *k == '"') k++;
+    for (i = 0, v = k; i < outsz - 1 && v[i] && v[i] != '"'; i++)
+        out[i] = v[i];
+    out[i] = '\0';
+    return i > 0 ? 1 : 0;
+}
+
+HttpResp handle_task_create(HttpReq req, Ctx *ctx)
+{
+    TaskQuery q;
+    TaskResult tr;
+    char gid[32], buf[128];
+    if (!ctx || !ctx->user) return json_error(401, "unauthorized");
+    if (!rbac_allow(ctx->user->role, PERM_TASK_WRITE))
+        return json_error(403, "forbidden");
+    memset(&q, 0, sizeof(q));
+    snprintf(q.user_id, sizeof(q.user_id), "%lld",
+             (long long)ctx->user->user_id);
+    extract_json_str(req.body, "\"title\"", q.title, sizeof(q.title));
+    if (extract_json_str(req.body, "\"goal_id\"", gid, sizeof(gid)))
+        q.goal_id = strtoll(gid, NULL, 10);
+    if (q.goal_id <= 0) return json_error(400, "bad_goal_id");
+    tr = store_task(ctx->db, q);
+    if (tr.err != ERR_OK) return json_error(500, "db_error");
+    snprintf(buf, sizeof(buf), "{\"id\":%lld}", (long long)tr.rows[0].id);
+    return json_ok(buf);
+}
+
+HttpResp handle_task_list(HttpReq req, Ctx *ctx)
+{
+    TaskQuery q;
+    TaskResult tr;
+    char buf[1024];
+    int i, pos, added;
+    const char *gidstr;
+    if (!ctx || !ctx->user) return json_error(401, "unauthorized");
+    if (!rbac_allow(ctx->user->role, PERM_TASK_READ))
+        return json_error(403, "forbidden");
+    memset(&q, 0, sizeof(q));
+    gidstr = strrchr(req.path, '/');
+    q.goal_id = gidstr ? strtoll(gidstr + 1, NULL, 10) : 0;
+    if (q.goal_id <= 0) return json_error(400, "bad_goal_id");
+    q.limit = 16;
+    tr = list_tasks(ctx->db, q);
+    if (tr.err != ERR_OK) return json_error(500, "db_error");
+    pos = snprintf(buf, sizeof(buf), "[");
+    for (i = 0; i < tr.count && pos > 0 && (size_t)pos < sizeof(buf) - 2; i++) {
+        added = snprintf(buf + pos, sizeof(buf) - (size_t)pos,
+                        "%s{\"id\":%lld,\"title\":\"%s\"}",
+                        i ? "," : "", (long long)tr.rows[i].id, tr.rows[i].title);
+        if (added > 0) pos += added;
+    }
+    if (pos > 0 && (size_t)pos < sizeof(buf) - 1)
+        pos += snprintf(buf + pos, sizeof(buf) - (size_t)pos, "]");
+    (void)pos;
     return json_ok(buf);
 }

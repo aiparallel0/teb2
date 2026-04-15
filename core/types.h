@@ -103,9 +103,22 @@ typedef struct {
 typedef struct { Err err; Task rows[16]; int count; } TaskResult;
 
 typedef struct {
-    int64_t id; char email[128]; char password_hash[128]; UserRole role;
+    int64_t id;
+    char email[128]; char password_hash[128]; UserRole role;
 } UserQuery;
 typedef struct { Err err; User user; } UserResult;
+
+typedef struct {
+    int64_t id;
+    int64_t task_id;
+    char    result[512];
+    int64_t created_at;
+} Outcome;
+
+typedef struct {
+    int64_t id; int64_t task_id; char result[512]; int limit;
+} OutcomeQuery;
+typedef struct { Err err; Outcome outcome; } OutcomeResult;
 
 typedef struct { char login[128]; char password[128]; } Cred;
 
