@@ -92,28 +92,41 @@ window.voteFeat = function () {
         teb.err("Vote recorded");
     });
 };
-/* workflows */
+/* workflows with 2s polling until complete */
 window.load_workflows = function () {};
 window.createRun = function () {
     var gid = document.getElementById("run-goal").value;
     if (!gid) return;
     teb.api("POST", "/runs", { goal_id: parseInt(gid, 10) }).then(function (r) {
         if (r.error) { teb.err(r.error); return; }
-        teb.err(""); window.checkRun(r.run ? r.run.id : r.id);
+        teb.err("");
+        var rid = r.run_id || (r.run ? r.run.id : r.id);
+        window.pollRun(rid, 0);
     });
 };
-window.checkRun = function (id) {
+window.pollRun = function (id, attempts) {
     teb.api("GET", "/runs/" + id).then(function (r) {
         var el = document.getElementById("run-status");
         if (r.error) { teb.empty("run-status", r.error); return; }
         var run = r.run || r;
+        var steps = run.steps || [];
+        var stepsHtml = steps.map(function (s) {
+            return '<div class="meta">Step ' + s.id + ': '
+                + E(s.agent) + ' — ' + E(s.status) + '</div>';
+        }).join("");
         el.innerHTML = '<div class="card">'
             + '<span class="title">Run #' + run.id + '</span>'
-            + ' <span class="status status-' + E(run.status || "pending")
-            + '">' + E(run.status || "pending") + '</span>'
-            + '<div class="meta">Goal ' + run.goal_id + '</div></div>';
+            + ' <span class="status status-' + E(run.status || "running")
+            + '">' + E(run.status || "running") + '</span>'
+            + '<div class="meta">Goal ' + run.goal_id + '</div>'
+            + stepsHtml + '</div>';
+        /* Poll every 2s while running */
+        if (run.status === "running" && attempts < 60) {
+            setTimeout(function () { window.pollRun(id, attempts + 1); }, 2000);
+        }
     });
 };
+window.checkRun = function (id) { window.pollRun(id, 0); };
 /* outcomes & learnings */
 window.load_measure = function () {};
 window.storeOutcome = function () {

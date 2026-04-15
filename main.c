@@ -58,8 +58,24 @@ int main(int argc, char **argv)
     if (bind(srv, &sa.base, sizeof(sa.in4)) != 0) {
         close(srv); db_close(&db); return 1;
     }
-    if (listen(srv, 16) != 0) {
+    if (listen(srv, 64) != 0) {
         close(srv); db_close(&db); return 1;
+    }
+
+    /* Pre-fork worker pool: N-1 child workers share the listening socket */
+    {
+        int nw = (cfg.workers > 1) ? cfg.workers : 4;
+        int i;
+        for (i = 1; i < nw; i++) {
+            pid_t wk = fork();
+            if (wk == 0) {
+                /* Worker: reopen own SQLite handle (not fork-safe) */
+                db_close(&db);
+                if (db_open(cfg.db_path, &db) != ERR_OK) _exit(1);
+                break;
+            }
+            if (wk < 0) break; /* fork failure: proceed with fewer workers */
+        }
     }
 
     while (g_running) {

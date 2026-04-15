@@ -16,6 +16,7 @@ typedef struct { unsigned char k[8]; } Key8;
 typedef struct {
     char db_path[256]; char secret[128]; int port;
     char smtp_host[256]; int smtp_port; char smtp_user[128]; char smtp_pass[128];
+    char openai_key[128]; char openai_model[64]; int workers;
 } Config;
 
 typedef struct {

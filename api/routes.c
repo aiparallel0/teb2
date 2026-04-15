@@ -9,11 +9,17 @@ static HttpResp ext_not_found(void)
     return json_error(404, "not_found");
 }
 
+/*
+ * dispatch_ext: extended route table. Auth guard applied at entry.
+ * All endpoints here require an authenticated user.
+ */
 HttpResp dispatch_ext(HttpReq req, Ctx *ctx)
 {
     const char *p = req.path;
 
-    /* moved from server.c dispatch */
+    /* Security: all extended routes require authentication */
+    if (!ctx || !ctx->user) return json_error(401, "unauthorized");
+
     if (strcmp(p, "/outcomes") == 0 && strcmp(req.method, "POST") == 0)
         return handle_outcome_store(req, ctx);
     if (strncmp(p, "/outcome/", 9) == 0 && strcmp(req.method, "GET") == 0)
@@ -95,7 +101,7 @@ HttpResp dispatch_ext(HttpReq req, Ctx *ctx)
     if (strcmp(p, "/votes") == 0 && strcmp(req.method, "POST") == 0)
         return handle_vote_upsert(req, ctx);
 
-    /* new: assets, notify, workflow, search, oauth */
+    /* assets, notify, workflow, search, oauth */
     if (strcmp(p, "/assets") == 0 && strcmp(req.method, "POST") == 0)
         return handle_asset_upload(req, ctx);
     if (strncmp(p, "/assets/", 8) == 0 && strcmp(req.method, "GET") == 0)

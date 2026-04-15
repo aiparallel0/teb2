@@ -42,25 +42,31 @@ HttpResult send_request(HttpReq req, Cred *cred)
     int  port = 80;
     int  fd;
     ssize_t n;
+    int hlen;
     const char *path_start;
     const char *slash;
     const char *host_end;
-    size_t hlen;
+    size_t hlen_h;
 
-    memset(&r, 0, sizeof(r));
+    memset(&r,   0, sizeof(r));
     memset(buf,  0, sizeof(buf));
-    (void)cred; /* credentials applied as Authorization header when present */
+    (void)cred;
 
-    /* Parse URL: strip scheme, extract host[:port] and /path separately */
+    /* Parse URL: strip scheme, extract host[:port] and /path */
     path_start = req.path;
-    if (strncmp(req.path, "http://", 7) == 0) path_start = req.path + 7;
+    if (strncmp(req.path, "https://", 8) == 0) {
+        path_start = req.path + 8;
+        port = 443;
+    } else if (strncmp(req.path, "http://", 7) == 0) {
+        path_start = req.path + 7;
+    }
 
     slash    = strchr(path_start, '/');
     host_end = slash ? slash : (path_start + strlen(path_start));
-    hlen     = (size_t)(host_end - path_start);
-    if (hlen >= sizeof(host)) hlen = sizeof(host) - 1;
-    memcpy(host, path_start, hlen);
-    host[hlen] = '\0';
+    hlen_h   = (size_t)(host_end - path_start);
+    if (hlen_h >= sizeof(host)) hlen_h = sizeof(host) - 1;
+    memcpy(host, path_start, hlen_h);
+    host[hlen_h] = '\0';
 
     {
         char *colon = strchr(host, ':');
@@ -71,19 +77,23 @@ HttpResult send_request(HttpReq req, Cred *cred)
     if (fd < 0) { r.err = ERR_IO; return r; }
 
     reqpath = slash ? slash : "/";
-    snprintf(buf, sizeof(buf),
-             "%s %s HTTP/1.0\r\nHost: %s\r\nContent-Length: %zu\r\n\r\n",
+    hlen = snprintf(buf, sizeof(buf),
+             "%s %s HTTP/1.0\r\nHost: %s\r\nContent-Length: %zu\r\n",
              req.method, reqpath, host, req.body_len);
+    if (hlen > 0 && req.auth_header[0] && (size_t)hlen < sizeof(buf) - 4)
+        hlen += snprintf(buf + hlen, sizeof(buf) - (size_t)hlen,
+                         "Authorization: %s\r\n", req.auth_header);
+    if (hlen > 0 && req.body_len > 0 && (size_t)hlen < sizeof(buf) - 4)
+        hlen += snprintf(buf + hlen, sizeof(buf) - (size_t)hlen,
+                         "Content-Type: application/json\r\n");
+    if (hlen > 0 && (size_t)hlen < sizeof(buf) - 3)
+        hlen += snprintf(buf + hlen, sizeof(buf) - (size_t)hlen, "\r\n");
 
-    if (write(fd, buf, strlen(buf)) < 0) {
-        close(fd);
-        r.err = ERR_IO;
-        return r;
+    if (hlen <= 0 || write(fd, buf, (size_t)hlen) < 0) {
+        close(fd); r.err = ERR_IO; return r;
     }
     if (req.body_len > 0 && write(fd, req.body, req.body_len) < 0) {
-        close(fd);
-        r.err = ERR_IO;
-        return r;
+        close(fd); r.err = ERR_IO; return r;
     }
 
     n = read(fd, buf, (ssize_t)(sizeof(buf) - 1));
