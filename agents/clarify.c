@@ -3,6 +3,7 @@
 #include "core/types.h"
 #include "core/errors.h"
 #include "agents/channel.h"
+#include "agents/util.h"
 
 /*
  * Clarify agent: validates a goal has enough detail to be decomposed.
@@ -16,18 +17,6 @@
  */
 
 #define CLARITY_MIN 8
-
-static AgentMsg make_result(AgentMsg src, Err err, const char *detail)
-{
-    AgentMsg out;
-    memset(&out, 0, sizeof(out));
-    out.tag = MSG_RESULT;
-    out.id  = src.id;
-    snprintf(out.user_id, sizeof(out.user_id), "%s", src.user_id);
-    snprintf(out.payload, sizeof(out.payload), "%s", detail);
-    out.err = err;
-    return out;
-}
 
 static int count_non_ws(const char *s)
 {
@@ -43,10 +32,12 @@ static int count_non_ws(const char *s)
 AgentMsg clarify_handle(AgentMsg msg)
 {
     if (msg.tag != MSG_CLARIFY)
-        return make_result(msg, ERR_UNKNOWN, "not_a_clarify_request");
+        return agent_make_result(msg, ERR_UNKNOWN,
+                                 "not_a_clarify_request");
 
     if (count_non_ws(msg.payload) < CLARITY_MIN)
-        return make_result(msg, ERR_OK, "clarify:need_more:too_vague");
+        return agent_make_result(msg, ERR_OK,
+                                 "clarify:need_more:too_vague");
 
-    return make_result(msg, ERR_OK, "clarified:ok");
+    return agent_make_result(msg, ERR_OK, "clarified:ok");
 }

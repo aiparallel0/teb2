@@ -5,52 +5,7 @@
 #include "core/errors.h"
 #include "auth/auth.h"
 #include "db/db.h"
-#define DEFAULT_ROUNDS 5000
-static HttpResp json_error(int status, const char *msg)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = status;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body),
-                                  "{\"error\":\"%s\"}", msg);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
-
-static HttpResp json_ok(const char *body)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = 200;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body), "%s", body);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
-
-static HashConfig default_hash_cfg(void)
-{
-    HashConfig cfg;
-    memset(&cfg, 0, sizeof(cfg));
-    cfg.rounds = DEFAULT_ROUNDS;
-    snprintf(cfg.salt, sizeof(cfg.salt), "%s", "teb2salt");
-    return cfg;
-}
-
-static int extract_json_str(const char *body, const char *key,
-                            char *out, size_t outsz)
-{
-    const char *k = strstr(body, key);
-    const char *v;
-    size_t i;
-    if (!k) return 0;
-    k += strlen(key);
-    while (*k == ' ' || *k == ':' || *k == '"') k++;
-    v = k;
-    for (i = 0; i < outsz - 1 && v[i] != '\0' && v[i] != '"'; i++)
-        out[i] = v[i];
-    out[i] = '\0';
-    return i > 0 ? 1 : 0;
-}
+#include "api/json.h"
 
 static void ticket_to_hex(const Ticket *t, char *out, size_t outsz)
 {
@@ -100,9 +55,10 @@ HttpResp handle_register(HttpReq req, Ctx *ctx)
     if (!ctx || !ctx->db) return json_error(500, "no_db");
     if (!extract_json_str(req.body, "\"email\"", email, sizeof(email)))
         return json_error(400, "missing_email");
-    if (!extract_json_str(req.body, "\"password\"", password, sizeof(password)))
+    if (!extract_json_str(req.body, "\"password\"", password,
+                          sizeof(password)))
         return json_error(400, "missing_password");
-    hcfg = default_hash_cfg();
+    hcfg = default_hash_config();
     hr   = hash_password(password, hcfg);
     if (hr.err != ERR_OK) return json_error(500, "hash_error");
     memset(&uq, 0, sizeof(uq));
@@ -113,7 +69,8 @@ HttpResp handle_register(HttpReq req, Ctx *ctx)
     if (ur.err != ERR_OK) return json_error(409, "user_exists");
     {
         char buf[128];
-        snprintf(buf, sizeof(buf), "{\"id\":%lld}", (long long)ur.user.id);
+        snprintf(buf, sizeof(buf), "{\"id\":%lld}",
+                 (long long)ur.user.id);
         return json_ok(buf);
     }
 }
@@ -125,19 +82,23 @@ HttpResp handle_login(HttpReq req, Ctx *ctx)
     HashResult stored, check;
     TokenResult tr;
     UserClaims claims;
-    char email[128], password[128], hex[sizeof(Ticket) * 2 + 1], body[256];
+    char email[128], password[128];
+    char hex[sizeof(Ticket) * 2 + 1], body[256];
     if (!ctx || !ctx->db || !ctx->cfg) return json_error(500, "no_ctx");
     if (!extract_json_str(req.body, "\"email\"", email, sizeof(email)))
         return json_error(400, "missing_email");
-    if (!extract_json_str(req.body, "\"password\"", password, sizeof(password)))
+    if (!extract_json_str(req.body, "\"password\"", password,
+                          sizeof(password)))
         return json_error(400, "missing_password");
     memset(&uq, 0, sizeof(uq));
     snprintf(uq.email, sizeof(uq.email), "%s", email);
     ur = fetch_user(ctx->db, uq);
-    if (ur.err == ERR_NOT_FOUND) return json_error(401, "invalid_credentials");
+    if (ur.err == ERR_NOT_FOUND)
+        return json_error(401, "invalid_credentials");
     if (ur.err != ERR_OK) return json_error(500, "db_error");
     memset(&stored, 0, sizeof(stored));
-    snprintf(stored.hash, sizeof(stored.hash), "%s", ur.user.password_hash);
+    snprintf(stored.hash, sizeof(stored.hash), "%s",
+             ur.user.password_hash);
     check = verify_password(password, stored);
     if (check.err != ERR_OK || !check.match)
         return json_error(401, "invalid_credentials");
@@ -157,7 +118,8 @@ HttpResp handle_refresh(HttpReq req, Ctx *ctx)
     TokenResult tr;
     char hex[sizeof(Ticket) * 2 + 1], body[256];
     (void)req;
-    if (!ctx || !ctx->user || !ctx->cfg) return json_error(401, "unauthorized");
+    if (!ctx || !ctx->user || !ctx->cfg)
+        return json_error(401, "unauthorized");
     tr = make_ticket(*ctx->user, ctx->cfg->secret);
     if (tr.err != ERR_OK) return json_error(500, "token_error");
     ticket_to_hex(&tr.ticket, hex, sizeof(hex));

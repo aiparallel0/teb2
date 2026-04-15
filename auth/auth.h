@@ -4,6 +4,8 @@
 #include "core/types.h"
 #include "core/errors.h"
 
+HashConfig  default_hash_config(void);
+
 HashResult  hash_password(const char *password, HashConfig cfg)
     __attribute__((warn_unused_result));
 

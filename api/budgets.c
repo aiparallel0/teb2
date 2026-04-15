@@ -6,49 +6,17 @@
 #include "core/errors.h"
 #include "auth/auth.h"
 #include "db/db.h"
-
-static HttpResp json_error(int status, const char *msg)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = status;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body),
-                                  "{\"error\":\"%s\"}", msg);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
-
-static HttpResp json_ok(const char *body)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = 200;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body), "%s", body);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
-
-static int extract_json_str(const char *body, const char *key,
-                            char *out, size_t outsz)
-{
-    const char *k = strstr(body, key), *v;
-    size_t i;
-    if (!k) return 0;
-    k += strlen(key);
-    while (*k == ' ' || *k == ':' || *k == '"') k++;
-    for (i = 0, v = k; i < outsz - 1 && v[i] && v[i] != '"'; i++)
-        out[i] = v[i];
-    out[i] = '\0';
-    return i > 0 ? 1 : 0;
-}
+#include "api/json.h"
+#include "api/escape.h"
 
 static HttpResp budget_json(BudgetResult br)
 {
-    char buf[256];
+    char buf[256], eu[128];
+    json_escape(br.budget.user_id, eu, sizeof(eu));
     snprintf(buf, sizeof(buf),
              "{\"id\":%lld,\"user_id\":\"%s\","
              "\"limit_cents\":%lld,\"spent_cents\":%lld}",
-             (long long)br.budget.id, br.budget.user_id,
+             (long long)br.budget.id, eu,
              (long long)br.budget.limit_cents,
              (long long)br.budget.spent_cents);
     return json_ok(buf);

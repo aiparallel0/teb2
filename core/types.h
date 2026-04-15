@@ -48,7 +48,7 @@ typedef struct {
     int64_t      user_id;
     UserRole     role;
     int64_t      expiry;
-    unsigned char mac[8];
+    unsigned char mac[32];
 } Ticket;
 
 typedef struct {

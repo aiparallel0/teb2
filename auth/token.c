@@ -7,39 +7,49 @@
 
 #define TOKEN_TTL 3600L
 
+#ifdef TEB2_MODERN
+#include "auth/sha256.h"
 /*
- * Binary ticket MAC: XOR-fold of a 32-byte mixing pass over ticket fields
- * and the secret key.
- *
- * SECURITY NOTE: This is a lightweight MAC suitable for single-server
- * deployments where the secret never leaves the process.  It is NOT a
- * cryptographic MAC (not HMAC-SHA256).  Compile with -DTEB2_MODERN to
- * swap in HMAC-SHA256 behind the same interface without changing callers.
+ * HMAC-SHA256 MAC over ticket fields + secret.
+ * Produces a full 32-byte MAC stored in ticket.mac[32].
  */
 static void compute_mac(int64_t user_id, UserRole role, int64_t expiry,
-                        const char *secret, unsigned char mac[8])
+                        const char *secret, unsigned char mac[32])
+{
+    unsigned char data[32];
+    memset(data, 0, sizeof(data));
+    memcpy(data,      &user_id, sizeof(user_id));
+    memcpy(data + 8,  &role,    sizeof(role));
+    memcpy(data + 12, &expiry,  sizeof(expiry));
+    sha256_hmac((const unsigned char *)secret, strlen(secret),
+                data, sizeof(data), mac);
+}
+#else
+/*
+ * Legacy XOR-fold MAC.  NOT cryptographic — use -DTEB2_MODERN for
+ * HMAC-SHA256.  Kept for backward compatibility on constrained builds.
+ */
+static void compute_mac(int64_t user_id, UserRole role, int64_t expiry,
+                        const char *secret, unsigned char mac[32])
 {
     unsigned char buf[32];
-    size_t i;
-    size_t slen = strlen(secret);
-
+    size_t i, slen = strlen(secret);
+    memset(mac, 0, 32);
     memset(buf, 0, sizeof(buf));
     memcpy(buf,      &user_id, sizeof(user_id));
     memcpy(buf + 8,  &role,    sizeof(role));
     memcpy(buf + 12, &expiry,  sizeof(expiry));
-
     for (i = 0; i < slen && i < sizeof(buf); i++)
         buf[i % sizeof(buf)] ^= (unsigned char)secret[i];
-
     for (i = 0; i < 8; i++)
         mac[i] = buf[i] ^ buf[i + 8] ^ buf[i + 16] ^ buf[i + 24];
 }
+#endif
 
 TokenResult make_ticket(UserClaims claims, const char *secret)
 {
     TokenResult r;
     memset(&r, 0, sizeof(r));
-
     if (!secret || secret[0] == '\0') {
         r.err = ERR_CRYPTO;
         return r;
@@ -57,11 +67,10 @@ TokenResult make_ticket(UserClaims claims, const char *secret)
 TokenResult check_ticket(Ticket t, const char *secret)
 {
     TokenResult r;
-    unsigned char expected[8];
+    unsigned char expected[32];
     int64_t now;
     size_t i;
     int diff;
-
     memset(&r, 0, sizeof(r));
     if (!secret || secret[0] == '\0') {
         r.err = ERR_CRYPTO;
@@ -74,7 +83,7 @@ TokenResult check_ticket(Ticket t, const char *secret)
     }
     compute_mac(t.user_id, t.role, t.expiry, secret, expected);
     diff = 0;
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < 32; i++)
         diff |= (int)(t.mac[i] ^ expected[i]);
     if (diff != 0) {
         r.err = ERR_AUTH;
