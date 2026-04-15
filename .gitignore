@@ -1,3 +1,27 @@
+# Build artifacts
 teb2
 *.o
+
+# Database
 teb2.db
+*.db
+
+# Environment (contains secrets)
+.env
+!.env.example
+!.env.production
+
+# Backups
+backups/
+
+# Editor
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TLS certs
+nginx/ssl/
