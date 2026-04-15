@@ -5,6 +5,7 @@
 
 /* api/server.c — HTTP parsing and response writing */
 HttpReq  parse_request(const char *raw, size_t len);
+HttpResp dispatch(HttpReq req, Ctx *ctx);
 void     write_response(int fd, HttpResp resp);
 
 /* api/goals.c */
