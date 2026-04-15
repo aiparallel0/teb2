@@ -106,7 +106,7 @@ HttpResp dispatch_ext(HttpReq req, Ctx *ctx)
         return handle_run_create(req, ctx);
     if (strncmp(p, "/runs/", 6) == 0 && strcmp(req.method, "GET") == 0)
         return handle_run_get(req, ctx);
-    if (strcmp(p, "/search") == 0 && strcmp(req.method, "POST") == 0)
+    if (strncmp(p, "/search", 7) == 0 && strcmp(req.method, "GET") == 0)
         return handle_search(req, ctx);
     if (strncmp(p, "/oauth/redirect", 15) == 0 && strcmp(req.method, "GET") == 0)
         return handle_oauth_redirect(req, ctx);

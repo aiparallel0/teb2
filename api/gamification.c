@@ -58,16 +58,16 @@ HttpResp handle_leaderboard(HttpReq req, Ctx *ctx)
     XpQuery q;
     XpResult r;
     char buf[256];
-    (void)req;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     memset(&q, 0, sizeof(q));
     q.limit = 10;
+    q.cursor = extract_cursor(req.path);
     r = list_xp(ctx->db, q);
     if (r.err == ERR_NOT_FOUND)
-        return json_ok("{\"top\":[]}");
+        return json_ok("{\"next_cursor\":0,\"top\":[]}");
     if (r.err != ERR_OK) return json_error(500, "db_error");
     snprintf(buf, sizeof(buf),
-             "{\"top\":[{\"user_id\":\"%s\",\"total\":%d}]}",
-             r.xp.user_id, r.xp.amount);
+             "{\"next_cursor\":%lld,\"top\":[{\"user_id\":\"%s\",\"total\":%d}]}",
+             (long long)(q.cursor + q.limit), r.xp.user_id, r.xp.amount);
     return json_ok(buf);
 }
