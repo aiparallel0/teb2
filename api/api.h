@@ -32,6 +32,21 @@ HttpResp handle_nudge_get(HttpReq req, Ctx *ctx);
 HttpResp handle_learn_store(HttpReq req, Ctx *ctx);
 HttpResp handle_learn_get(HttpReq req, Ctx *ctx);
 
+/* api/exec.c */
+HttpResp handle_exec_run(HttpReq req, Ctx *ctx);
+
+/* api/decompose.c */
+HttpResp handle_decompose_run(HttpReq req, Ctx *ctx);
+
+/* api/schedules.c */
+HttpResp handle_sched_create(HttpReq req, Ctx *ctx);
+HttpResp handle_sched_list(HttpReq req, Ctx *ctx);
+
+/* api/budgets.c */
+HttpResp handle_budget_create(HttpReq req, Ctx *ctx);
+HttpResp handle_budget_get(HttpReq req, Ctx *ctx);
+HttpResp handle_spend_record(HttpReq req, Ctx *ctx);
+
 /* api/auth.c */
 HttpResp handle_register(HttpReq req, Ctx *ctx);
 HttpResp handle_login(HttpReq req, Ctx *ctx);

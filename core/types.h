@@ -6,27 +6,14 @@
 #include "core/errors.h"
 
 typedef enum { ROLE_USER = 0, ROLE_ADMIN } UserRole;
-
 typedef enum {
-    PERM_GOAL_READ = 0,
-    PERM_GOAL_WRITE,
-    PERM_TASK_READ,
-    PERM_TASK_WRITE,
-    PERM_NUDGE_READ,
-    PERM_NUDGE_WRITE,
-    PERM_LEARN_READ,
-    PERM_LEARN_WRITE,
+    PERM_GOAL_READ = 0, PERM_GOAL_WRITE, PERM_TASK_READ, PERM_TASK_WRITE,
+    PERM_NUDGE_READ, PERM_NUDGE_WRITE, PERM_LEARN_READ, PERM_LEARN_WRITE,
     PERM_ADMIN
 } Permission;
-
 typedef struct { unsigned char data[64]; size_t len; } Bytes;
 typedef struct { unsigned char k[8]; } Key8;
-
-typedef struct {
-    char db_path[256];
-    char secret[128];
-    int  port;
-} Config;
+typedef struct { char db_path[256]; char secret[128]; int port; } Config;
 
 typedef struct {
     int64_t  id;
@@ -133,6 +120,11 @@ typedef struct { struct sqlite3 *handle; } Db;
 
 typedef struct { Db *db; Config *cfg; UserClaims *user; } Ctx;
 
+typedef enum {
+    MSG_GOAL_NEW = 0, MSG_CLARIFY, MSG_TASK_DONE, MSG_EXEC_REQ,
+    MSG_FINANCE_REQ, MSG_NUDGE, MSG_CHECKIN, MSG_MEASURE, MSG_LEARN, MSG_RESULT
+} MsgTag;
+typedef struct { MsgTag tag; int64_t id; char user_id[64]; char payload[512]; Err err; } AgentMsg;
 
 typedef struct {
     int64_t id;
@@ -157,5 +149,17 @@ typedef struct {
     int64_t id; int64_t goal_id; char insight[512]; int limit;
 } LearnQuery;
 typedef struct { Err err; Learning learning; } LearnResult;
+
+typedef struct { int64_t id; int64_t task_id; int64_t run_at; } SchedEntry;
+typedef struct { int64_t id; int64_t task_id; int64_t run_at; int limit; } SchedQuery;
+typedef struct { Err err; SchedEntry entry; } SchedResult;
+
+typedef struct { int64_t id; char user_id[64]; int64_t limit_cents; int64_t spent_cents; } Budget;
+typedef struct { int64_t id; char user_id[64]; int64_t amount_cents; } BudgetQuery;
+typedef struct { Err err; Budget budget; } BudgetResult;
+
+typedef struct { int64_t id; char agent[64]; char key[128]; char val[512]; int64_t ts; } MemEntry;
+typedef struct { int64_t id; char agent[64]; char key[128]; char val[512]; int limit; } MemQuery;
+typedef struct { Err err; MemEntry entry; } MemResult;
 
 #endif /* TYPES_H */

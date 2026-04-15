@@ -69,6 +69,20 @@ static HttpResp dispatch(HttpReq req, Ctx *ctx)
         return handle_learn_store(req, ctx);
     if (strncmp(p, "/learning/", 10) == 0 && strcmp(req.method, "GET") == 0)
         return handle_learn_get(req, ctx);
+    if (strncmp(p, "/exec/", 6) == 0 && strcmp(req.method, "POST") == 0)
+        return handle_exec_run(req, ctx);
+    if (strncmp(p, "/decompose/", 11) == 0 && strcmp(req.method, "POST") == 0)
+        return handle_decompose_run(req, ctx);
+    if (strcmp(p, "/schedules") == 0 && strcmp(req.method, "POST") == 0)
+        return handle_sched_create(req, ctx);
+    if (strncmp(p, "/schedules/", 11) == 0 && strcmp(req.method, "GET") == 0)
+        return handle_sched_list(req, ctx);
+    if (strcmp(p, "/budgets") == 0 && strcmp(req.method, "POST") == 0)
+        return handle_budget_create(req, ctx);
+    if (strcmp(p, "/budgets") == 0 && strcmp(req.method, "GET") == 0)
+        return handle_budget_get(req, ctx);
+    if (strcmp(p, "/spending") == 0 && strcmp(req.method, "POST") == 0)
+        return handle_spend_record(req, ctx);
     return not_found();
 }
 

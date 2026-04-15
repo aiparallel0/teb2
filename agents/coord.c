@@ -52,6 +52,6 @@ AgentMsg coord_handle(AgentMsg msg)
     case MSG_MEASURE:     return measure_handle(msg);
     case MSG_LEARN:       return learn_handle(msg);
     case MSG_RESULT:      return msg;
-    default:              return unknown_msg(msg);
     }
+    return unknown_msg(msg);
 }
