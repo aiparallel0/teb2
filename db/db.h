@@ -3,10 +3,13 @@
 
 #include "core/types.h"
 #include "core/errors.h"
+#include "core/types_collab.h"
+#include "core/types_ext.h"
 
 Err      db_open(const char *path, Db *out)
     __attribute__((warn_unused_result));
-
+Err      db_init_ext(Db *db)
+    __attribute__((warn_unused_result));
 void     db_close(Db *db);
 
 GoalResult fetch_goal(Db *db, GoalQuery q) __attribute__((warn_unused_result));
@@ -40,5 +43,40 @@ BudgetResult record_spend(Db *db, BudgetQuery q) __attribute__((warn_unused_resu
 
 MemResult store_mem(Db *db, MemQuery q) __attribute__((warn_unused_result));
 MemResult fetch_mem(Db *db, MemQuery q) __attribute__((warn_unused_result));
+
+/* collab */
+WsResult     store_ws(Db *db, WsQuery q) __attribute__((warn_unused_result));
+WsResult     fetch_ws(Db *db, WsQuery q) __attribute__((warn_unused_result));
+CollabResult store_collab(Db *db, CollabQuery q) __attribute__((warn_unused_result));
+CollabResult list_collabs(Db *db, CollabQuery q) __attribute__((warn_unused_result));
+ChatResult   store_chat(Db *db, ChatQuery q) __attribute__((warn_unused_result));
+ChatResult   list_chats(Db *db, ChatQuery q) __attribute__((warn_unused_result));
+
+/* integrations */
+IntegResult store_integ(Db *db, IntegQuery q) __attribute__((warn_unused_result));
+IntegResult fetch_integ(Db *db, IntegQuery q) __attribute__((warn_unused_result));
+OAuthResult store_oauth(Db *db, OAuthQuery q) __attribute__((warn_unused_result));
+OAuthResult fetch_oauth(Db *db, OAuthQuery q) __attribute__((warn_unused_result));
+
+/* enterprise */
+OrgResult store_org(Db *db, OrgQuery q) __attribute__((warn_unused_result));
+OrgResult fetch_org(Db *db, OrgQuery q) __attribute__((warn_unused_result));
+SsoResult store_sso(Db *db, SsoQuery q) __attribute__((warn_unused_result));
+IpResult  check_ip(Db *db, IpQuery q) __attribute__((warn_unused_result));
+
+/* analytics */
+SnapResult store_snap(Db *db, SnapQuery q) __attribute__((warn_unused_result));
+TimeResult store_time(Db *db, TimeQuery q) __attribute__((warn_unused_result));
+RoiResult  fetch_roi(Db *db, RoiQuery q) __attribute__((warn_unused_result));
+
+/* gamification */
+XpResult     credit_xp(Db *db, XpQuery q) __attribute__((warn_unused_result));
+StreakResult check_streak(Db *db, StreakQuery q) __attribute__((warn_unused_result));
+XpResult     list_xp(Db *db, XpQuery q) __attribute__((warn_unused_result));
+
+/* community */
+BlogResult store_blog(Db *db, BlogQuery q) __attribute__((warn_unused_result));
+BlogResult fetch_blog(Db *db, BlogQuery q) __attribute__((warn_unused_result));
+VoteResult store_vote(Db *db, VoteQuery q) __attribute__((warn_unused_result));
 
 #endif /* DB_H */

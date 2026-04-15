@@ -52,6 +52,10 @@ AgentMsg coord_handle(AgentMsg msg)
     case MSG_MEASURE:     return measure_handle(msg);
     case MSG_LEARN:       return learn_handle(msg);
     case MSG_RESULT:      return msg;
+    case MSG_DECOMPOSE:   return decompose_handle(msg);
+    case MSG_PLUGIN:      return plugin_handle(msg);
+    case MSG_OAUTH:       return oauth_handle(msg);
+    case MSG_NOTIFY:      return outreach_handle(msg);
     }
     return unknown_msg(msg);
 }
