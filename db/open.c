@@ -101,6 +101,10 @@ Err db_open(const char *path, Db *out)
         out->handle = NULL;
         return ERR_DB;
     }
+    /* Enable WAL mode for concurrent multi-process access */
+    sqlite3_exec(out->handle, "PRAGMA journal_mode=WAL;",  NULL, NULL, NULL);
+    sqlite3_exec(out->handle, "PRAGMA synchronous=NORMAL;", NULL, NULL, NULL);
+
     rc = sqlite3_exec(out->handle, SCHEMA, NULL, NULL, &errmsg);
     if (rc != SQLITE_OK) {
         sqlite3_free(errmsg);

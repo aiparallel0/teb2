@@ -13,65 +13,108 @@
 #include "api/json.h"
 #include "api/escape.h"
 
+/* Bundled context for fork child step execution */
+typedef struct { Db *db; Config *cfg; int64_t run_id; } RunJob;
+
+/* Execute all pending workflow steps sequentially in a child process */
+static int execute_steps(RunJob job, TaskResult tr)
+{
+    StepResult sr;
+    StepResult usr;
+    AgentMsg   msg, res;
+    int        i;
+
+    sr = list_steps(job.db, job.run_id);
+    for (i = 0; i < sr.count; i++) {
+        usr = update_step_status(job.db, sr.steps[i].id, "running", "");
+        (void)usr;
+        memset(&msg, 0, sizeof(msg));
+        msg.tag = MSG_EXEC_REQ;
+        msg.id  = (i < tr.count) ? tr.rows[i].id : job.run_id;
+        msg.db  = job.db;
+        msg.cfg = job.cfg;
+        snprintf(msg.user_id, sizeof(msg.user_id), "%s",
+                 (i < tr.count) ? tr.rows[i].user_id : "");
+        snprintf(msg.payload, sizeof(msg.payload), "%s", sr.steps[i].payload);
+        res = coord_handle(msg);
+        usr = update_step_status(job.db, sr.steps[i].id,
+                                 res.err == ERR_OK ? "done" : "failed",
+                                 res.payload);
+        (void)usr;
+    }
+    return (sr.count > 0) ? 1 : 0;
+}
+
 HttpResp handle_run_create(HttpReq req, Ctx *ctx)
 {
-    char gid[32], buf[512];
-    RunQuery rq;
-    RunResult rr, ur;
-    AgentMsg msg, res;
-    StepQuery sq;
+    char       gid[32], buf[256];
+    RunQuery   rq;
+    RunResult  rr, ur;
+    TaskQuery  tq;
+    TaskResult tr;
+    StepQuery  sq;
     StepResult sr;
-    int ok;
+    RunJob     job;
+    pid_t      pid;
+    int        i;
 
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_GOAL_WRITE))
         return json_error(403, "forbidden");
+
     memset(&rq, 0, sizeof(rq));
     if (!extract_json_str(req.body, "\"goal_id\"", gid, sizeof(gid)))
         return json_error(400, "missing_goal_id");
     rq.goal_id = strtoll(gid, NULL, 10);
+
     rr = store_run(ctx->db, rq);
     if (rr.err != ERR_OK) return json_error(500, "db_error");
-    memset(&msg, 0, sizeof(msg));
-    msg.tag = MSG_GOAL_NEW;
-    msg.id  = rq.goal_id;
-    msg.db  = ctx->db;
-    msg.cfg = ctx->cfg;
-    snprintf(msg.user_id, sizeof(msg.user_id), "%lld",
-             (long long)ctx->user->user_id);
-    snprintf(msg.payload, sizeof(msg.payload), "%lld", (long long)rq.goal_id);
-    res = coord_handle(msg);
-    memset(&sq, 0, sizeof(sq));
-    sq.run_id = rr.run.id;
-    sq.id = 0;
-    snprintf(sq.agent, sizeof(sq.agent), "coord");
-    snprintf(sq.payload, sizeof(sq.payload), "%s", res.payload);
-    sr = store_step(ctx->db, sq);
-    ok = (res.err == ERR_OK);
-    if (!ok) {
-        StepResult uss;
-        sleep(1);
-        res = coord_handle(msg);
-        ok = (res.err == ERR_OK);
-        if (sr.err == ERR_OK) {
-            uss = update_step_status(ctx->db, sr.step.id,
-                ok ? "done" : "error", res.payload);
-            (void)uss;
-        }
+
+    /* Fetch tasks for this goal to create workflow steps */
+    memset(&tq, 0, sizeof(tq));
+    tq.goal_id = rq.goal_id;
+    tq.limit   = 16;
+    tr = list_tasks(ctx->db, tq);
+
+    for (i = 0; i < tr.count; i++) {
+        memset(&sq, 0, sizeof(sq));
+        sq.run_id = rr.run.id;
+        sq.id     = i;
+        snprintf(sq.agent,   sizeof(sq.agent),   "%s",
+                 tr.rows[i].agent[0] ? tr.rows[i].agent : "exec");
+        snprintf(sq.payload, sizeof(sq.payload), "%s",
+                 tr.rows[i].description);
+        sr = store_step(ctx->db, sq);
+        (void)sr;
     }
-    ur = update_run_status(ctx->db, rr.run.id,
-             ok ? "done" : "error", ok ? "" : res.payload);
-    (void)ur;
+
+    /* Fork child to execute steps asynchronously */
+    pid = fork();
+    if (pid == 0) {
+        Db cdb;
+        memset(&cdb, 0, sizeof(cdb));
+        if (db_open(ctx->cfg->db_path, &cdb) == ERR_OK) {
+            job.db     = &cdb;
+            job.cfg    = ctx->cfg;
+            job.run_id = rr.run.id;
+            (void)execute_steps(job, tr);
+            ur = update_run_status(&cdb, rr.run.id, "done", "");
+            (void)ur;
+            db_close(&cdb);
+        }
+        _exit(0);
+    }
+    /* Parent returns immediately with run_id */
     snprintf(buf, sizeof(buf),
-             "{\"run_id\":%lld,\"status\":\"%s\"}",
-             (long long)rr.run.id, ok ? "done" : "error");
+             "{\"run_id\":%lld,\"status\":\"running\"}",
+             (long long)rr.run.id);
     return json_ok(buf);
 }
 
 HttpResp handle_run_get(HttpReq req, Ctx *ctx)
 {
-    RunQuery rq;
-    RunResult rr;
+    RunQuery   rq;
+    RunResult  rr;
     StepResult sr;
     char buf[2048], es[32];
     int i, off;

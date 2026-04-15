@@ -6,6 +6,7 @@
 #include "core/errors.h"
 #include "auth/auth.h"
 #include "db/db.h"
+#include "exec/exec.h"
 #include "agents/channel.h"
 #include "api/json.h"
 #include "api/escape.h"
@@ -15,11 +16,24 @@
  * Fetches task, dispatches to agent system via coord_handle,
  * stores outcome, updates task status.
  */
+
+/* Browser singleton — spawned on first exec call */
+static BrowserProc g_browser;
+static int         g_browser_ready;
+
+static void ensure_browser(void)
+{
+    if (!g_browser_ready) {
+        if (browser_spawn(&g_browser) == 0)
+            g_browser_ready = 1;
+    }
+}
+
 HttpResp handle_exec_run(HttpReq req, Ctx *ctx)
 {
-    TaskQuery tq;
-    TaskResult tr;
-    AgentMsg in, out;
+    TaskQuery   tq;
+    TaskResult  tr;
+    AgentMsg    in, out;
     OutcomeQuery oq;
     OutcomeResult otr;
     const char *idstr;
@@ -39,12 +53,16 @@ HttpResp handle_exec_run(HttpReq req, Ctx *ctx)
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
 
+    /* Ensure browser subprocess is available for browser automation tasks */
+    ensure_browser();
+
     memset(&in, 0, sizeof(in));
     in.tag = MSG_EXEC_REQ;
     in.id  = tr.rows[0].id;
+    in.db  = ctx->db;
+    in.cfg = ctx->cfg;
     snprintf(in.user_id, sizeof(in.user_id), "%s", tr.rows[0].user_id);
-    snprintf(in.payload, sizeof(in.payload), "%s",
-             tr.rows[0].description);
+    snprintf(in.payload, sizeof(in.payload), "%s", tr.rows[0].description);
 
     out = coord_handle(in);
 

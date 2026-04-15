@@ -38,4 +38,8 @@ OAuthResult oauth_refresh(const char *provider, const char *refresh_tok,
     Config *cfg, Db *db, const char *user_id)
     __attribute__((warn_unused_result));
 
+/* browser process lifecycle */
+typedef struct { int pid; int rfd; int wfd; } BrowserProc;
+int browser_spawn(BrowserProc *proc) __attribute__((warn_unused_result));
+
 #endif /* EXEC_H */
