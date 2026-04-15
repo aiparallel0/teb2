@@ -5,7 +5,7 @@
 #include "core/errors.h"
 #include "db/db.h"
 
-static const char *SCHEMA_EXT =
+static const char *SCHEMA_A =
     "CREATE TABLE IF NOT EXISTS workspaces("
     "id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "owner_id TEXT NOT NULL,name TEXT NOT NULL,"
@@ -51,8 +51,9 @@ static const char *SCHEMA_EXT =
     "CREATE TABLE IF NOT EXISTS ip_allowlist("
     "id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "org_id INTEGER NOT NULL,cidr TEXT NOT NULL,"
-    "FOREIGN KEY (org_id) REFERENCES orgs(id));"
+    "FOREIGN KEY (org_id) REFERENCES orgs(id));";
 
+static const char *SCHEMA_B =
     "CREATE TABLE IF NOT EXISTS progress_snapshots("
     "id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "goal_id INTEGER NOT NULL,pct INTEGER NOT NULL,"
@@ -100,16 +101,47 @@ static const char *SCHEMA_EXT =
     "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
     "UNIQUE(user_id,feature));";
 
+static const char *SCHEMA_C =
+    "CREATE TABLE IF NOT EXISTS assets("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "user_id TEXT NOT NULL,filename TEXT NOT NULL,"
+    "mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',"
+    "size_bytes INTEGER NOT NULL DEFAULT 0,path TEXT NOT NULL,"
+    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));"
+
+    "CREATE TABLE IF NOT EXISTS workflow_runs("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "goal_id INTEGER NOT NULL,"
+    "status TEXT NOT NULL DEFAULT 'pending',"
+    "started_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
+    "finished_at INTEGER NOT NULL DEFAULT 0,"
+    "error_msg TEXT NOT NULL DEFAULT '');"
+
+    "CREATE TABLE IF NOT EXISTS workflow_steps("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "run_id INTEGER NOT NULL,step_index INTEGER NOT NULL,"
+    "agent TEXT NOT NULL,payload TEXT NOT NULL DEFAULT '',"
+    "status TEXT NOT NULL DEFAULT 'pending',"
+    "result TEXT NOT NULL DEFAULT '',"
+    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
+    "FOREIGN KEY (run_id) REFERENCES workflow_runs(id));"
+
+    "CREATE VIRTUAL TABLE IF NOT EXISTS search_idx USING fts5("
+    "entity,entity_id UNINDEXED,content);";
+
+static Err run_sql(sqlite3 *h, const char *sql)
+{
+    char *e = NULL;
+    int rc = sqlite3_exec(h, sql, NULL, NULL, &e);
+    if (rc != SQLITE_OK) { sqlite3_free(e); return ERR_DB; }
+    return ERR_OK;
+}
+
 Err db_init_ext(Db *db)
 {
-    char *errmsg = NULL;
-    int rc;
-
     if (!db || !db->handle) return ERR_DB;
-    rc = sqlite3_exec(db->handle, SCHEMA_EXT, NULL, NULL, &errmsg);
-    if (rc != SQLITE_OK) {
-        sqlite3_free(errmsg);
-        return ERR_DB;
-    }
+    if (run_sql(db->handle, SCHEMA_A) != ERR_OK) return ERR_DB;
+    if (run_sql(db->handle, SCHEMA_B) != ERR_OK) return ERR_DB;
+    if (run_sql(db->handle, SCHEMA_C) != ERR_OK) return ERR_DB;
     return ERR_OK;
 }

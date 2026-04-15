@@ -103,6 +103,7 @@ HttpResp handle_task_list(HttpReq req, Ctx *ctx)
     char buf[2048], et[512];
     int i, pos, added;
     const char *gidstr;
+    int64_t next_cursor;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_TASK_READ))
         return json_error(403, "forbidden");
@@ -111,9 +112,12 @@ HttpResp handle_task_list(HttpReq req, Ctx *ctx)
     q.goal_id = gidstr ? strtoll(gidstr + 1, NULL, 10) : 0;
     if (q.goal_id <= 0) return json_error(400, "bad_goal_id");
     q.limit = 16;
+    q.cursor = extract_cursor(req.path);
     tr = list_tasks(ctx->db, q);
     if (tr.err != ERR_OK) return json_error(500, "db_error");
-    pos = snprintf(buf, sizeof(buf), "[");
+    next_cursor = (tr.count > 0) ? tr.rows[tr.count - 1].id : 0;
+    pos = snprintf(buf, sizeof(buf), "{\"next_cursor\":%lld,\"items\":[",
+                   (long long)next_cursor);
     for (i = 0; i < tr.count && pos > 0 && (size_t)pos < sizeof(buf) - 2;
          i++) {
         json_escape(tr.rows[i].title, et, sizeof(et));
@@ -122,8 +126,8 @@ HttpResp handle_task_list(HttpReq req, Ctx *ctx)
                         i ? "," : "", (long long)tr.rows[i].id, et);
         if (added > 0) pos += added;
     }
-    if (pos > 0 && (size_t)pos < sizeof(buf) - 1)
-        pos += snprintf(buf + pos, sizeof(buf) - (size_t)pos, "]");
+    if (pos > 0 && (size_t)pos < sizeof(buf) - 3)
+        pos += snprintf(buf + pos, sizeof(buf) - (size_t)pos, "]}");
     (void)pos;
     return json_ok(buf);
 }

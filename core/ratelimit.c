@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
 #include <time.h>
+#include <stdio.h>
 #include "core/ratelimit.h"
 
 static RlBucket rl_table[RL_BUCKETS];

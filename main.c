@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 #include "core/types.h"
 #include "core/errors.h"
@@ -17,12 +18,13 @@
 
 static volatile sig_atomic_t g_running = 1;
 
-static void handle_signal(int sig)
-{
-    (void)sig;
-    g_running = 0;
-}
+static void handle_signal(int sig) { (void)sig; g_running = 0; }
+static void reap_children(int sig) { (void)sig; while (waitpid(-1, NULL, WNOHANG) > 0) ; }
 
+static int is_sse_path(const char *path)
+{
+    return (strncmp(path, "/sse/", 5) == 0);
+}
 
 int main(int argc, char **argv)
 {
@@ -44,6 +46,7 @@ int main(int argc, char **argv)
     }
     signal(SIGTERM, handle_signal);
     signal(SIGINT,  handle_signal);
+    signal(SIGCHLD, reap_children);
 
     srv = socket(AF_INET, SOCK_STREAM, 0);
     if (srv < 0) { db_close(&db); return 1; }
@@ -72,6 +75,7 @@ int main(int argc, char **argv)
         if (n > 0) {
             buf[n] = '\0';
             req = parse_request(buf, (size_t)n);
+            req.fd = conn;
             memset(&ctx, 0, sizeof(ctx));
             ctx.db  = &db;
             ctx.cfg = &cfg;
@@ -80,8 +84,19 @@ int main(int argc, char **argv)
                 uc = ar.claims;
                 ctx.user = &uc;
             }
-            resp = dispatch(req, &ctx);
-            write_response(conn, resp);
+            if (is_sse_path(req.path)) {
+                pid_t pid = fork();
+                if (pid == 0) {
+                    close(srv);
+                    (void)dispatch(req, &ctx);
+                    close(conn);
+                    db_close(&db);
+                    _exit(0);
+                }
+            } else {
+                resp = dispatch(req, &ctx);
+                write_response(conn, resp);
+            }
         }
         close(conn);
     }

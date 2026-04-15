@@ -56,6 +56,7 @@ GoalResult store_goal(Db *db, GoalQuery q)
         "INSERT INTO goals(user_id,title,description,parent_id)"
         " VALUES(?,?,?,?)"
         " RETURNING id,user_id,title,description,status,parent_id,created_at;";
+    char buf[768];
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -73,6 +74,10 @@ GoalResult store_goal(Db *db, GoalQuery q)
         r.err = ERR_DB;
     }
     sqlite3_finalize(stmt);
+    if (r.err == ERR_OK) {
+        snprintf(buf, sizeof(buf), "%s %s", r.rows[0].title, r.rows[0].description);
+        { Err ie = index_entity(db, "goal", r.rows[0].id, buf); (void)ie; }
+    }
     return r;
 }
 
@@ -81,7 +86,7 @@ GoalResult list_goals(Db *db, GoalQuery q)
     GoalResult r;
     sqlite3_stmt *stmt = NULL;
     const char *sql = "SELECT id,user_id,title,description,status,parent_id,created_at"
-                      " FROM goals WHERE user_id=? LIMIT ? OFFSET ?;";
+                      " FROM goals WHERE user_id=? AND id > ? ORDER BY id ASC LIMIT ?;";
     int lim;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
@@ -90,8 +95,8 @@ GoalResult list_goals(Db *db, GoalQuery q)
         r.err = ERR_DB; return r;
     }
     sqlite3_bind_text(stmt, 1, q.user_id, -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt,  2, lim);
-    sqlite3_bind_int(stmt,  3, q.offset);
+    sqlite3_bind_int64(stmt, 2, q.cursor);
+    sqlite3_bind_int(stmt,  3, lim);
     while (sqlite3_step(stmt) == SQLITE_ROW && r.count < 16)
         r.rows[r.count++] = row_to_goal(stmt);
     r.err = ERR_OK;

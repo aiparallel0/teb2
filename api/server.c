@@ -3,14 +3,16 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "core/types.h"
+#include "core/ratelimit.h"
 #include "api/api.h"
+#include "api/json.h"
 
 HttpReq parse_request(const char *raw, size_t len)
 {
     HttpReq req;
     const char *end = raw + len;
     const char *p   = raw;
-    const char *sp1, *sp2, *body, *auth;
+    const char *sp1, *sp2, *body, *auth, *xff;
 
     memset(&req, 0, sizeof(req));
     sp1 = memchr(p, ' ', (size_t)(end - p));
@@ -27,6 +29,12 @@ HttpReq parse_request(const char *raw, size_t len)
         auth += 16;
         snprintf(req.auth_header, sizeof(req.auth_header),
                  "%.*s", (int)(strcspn(auth, "\r\n")), auth);
+    }
+    xff = strstr(raw, "\nX-Forwarded-For: ");
+    if (xff) {
+        xff += 18;
+        snprintf(req.fwd_for, sizeof(req.fwd_for),
+                 "%.*s", (int)(strcspn(xff, "\r\n,")), xff);
     }
     body = strstr(raw, "\r\n\r\n");
     if (body) {
@@ -74,10 +82,23 @@ static HttpResp options_resp(void)
     return r;
 }
 
-HttpResp dispatch(HttpReq req, Ctx *ctx)
+static HttpResp dispatch_internal(HttpReq req, Ctx *ctx)
 {
     const char *p = req.path;
+    const char *rlkey;
     if (strcmp(req.method, "OPTIONS") == 0) return options_resp();
+    if (strcmp(p, "/healthz") == 0 && strcmp(req.method, "GET") == 0)
+        return handle_healthz(req, ctx);
+    if (strcmp(p, "/metrics") == 0 && strcmp(req.method, "GET") == 0)
+        return handle_metrics(req, ctx);
+    rlkey = req.fwd_for[0] ? req.fwd_for : "unknown";
+    if (strcmp(p, "/auth/register") == 0 || strcmp(p, "/auth/login") == 0) {
+        if (!rl_check(rlkey, 10))
+            return json_error(429, "rate_limited");
+    } else {
+        if (!rl_check(rlkey, 120))
+            return json_error(429, "rate_limited");
+    }
     if (strncmp(p, "/goals", 6) == 0) {
         if (strcmp(req.method, "POST") == 0)
             return handle_goal_create(req, ctx);
@@ -103,51 +124,17 @@ HttpResp dispatch(HttpReq req, Ctx *ctx)
         if (strcmp(req.method, "GET") == 0)
             return handle_task_status(req, ctx);
     }
-    if (strcmp(p, "/auth/register") == 0)
-        return handle_register(req, ctx);
-    if (strcmp(p, "/auth/login") == 0)
-        return handle_login(req, ctx);
-    if (strcmp(p, "/auth/refresh") == 0)
-        return handle_refresh(req, ctx);
-    if (strcmp(p, "/outcomes") == 0 && strcmp(req.method, "POST") == 0)
-        return handle_outcome_store(req, ctx);
-    if (strncmp(p, "/outcome/", 9) == 0
-        && strcmp(req.method, "GET") == 0)
-        return handle_outcome_get(req, ctx);
-    if (strcmp(p, "/nudges") == 0 && strcmp(req.method, "POST") == 0)
-        return handle_nudge_store(req, ctx);
-    if (strncmp(p, "/nudge/", 7) == 0
-        && strcmp(req.method, "GET") == 0)
-        return handle_nudge_get(req, ctx);
-    if (strcmp(p, "/learnings") == 0
-        && strcmp(req.method, "POST") == 0)
-        return handle_learn_store(req, ctx);
-    if (strncmp(p, "/learning/", 10) == 0
-        && strcmp(req.method, "GET") == 0)
-        return handle_learn_get(req, ctx);
-    if (strncmp(p, "/exec/", 6) == 0
-        && strcmp(req.method, "POST") == 0)
-        return handle_exec_run(req, ctx);
-    if (strncmp(p, "/decompose/", 11) == 0
-        && strcmp(req.method, "POST") == 0)
-        return handle_decompose_run(req, ctx);
-    if (strcmp(p, "/schedules") == 0
-        && strcmp(req.method, "POST") == 0)
-        return handle_sched_create(req, ctx);
-    if (strncmp(p, "/schedules/", 11) == 0
-        && strcmp(req.method, "GET") == 0)
-        return handle_sched_list(req, ctx);
-    if (strcmp(p, "/budgets") == 0
-        && strcmp(req.method, "POST") == 0)
-        return handle_budget_create(req, ctx);
-    if (strcmp(p, "/budgets") == 0
-        && strcmp(req.method, "GET") == 0)
-        return handle_budget_get(req, ctx);
-    if (strcmp(p, "/spending") == 0
-        && strcmp(req.method, "POST") == 0)
-        return handle_spend_record(req, ctx);
-    if (strcmp(p, "/events") == 0
-        && strcmp(req.method, "GET") == 0)
+    if (strcmp(p, "/auth/register") == 0) return handle_register(req, ctx);
+    if (strcmp(p, "/auth/login") == 0)    return handle_login(req, ctx);
+    if (strcmp(p, "/auth/refresh") == 0)  return handle_refresh(req, ctx);
+    if (strncmp(p, "/sse/chat/", 10) == 0 && strcmp(req.method, "GET") == 0)
         return handle_sse_subscribe(req, ctx);
     return dispatch_ext(req, ctx);
+}
+
+HttpResp dispatch(HttpReq req, Ctx *ctx)
+{
+    HttpResp resp = dispatch_internal(req, ctx);
+    metrics_inc(req.method, req.path, resp.status);
+    return resp;
 }

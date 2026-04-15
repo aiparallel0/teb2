@@ -98,7 +98,7 @@ CollabResult list_collabs(Db *db, CollabQuery q)
     CollabResult r;
     sqlite3_stmt *s = NULL;
     const char *sql = "SELECT id,ws_id,user_id,role_name,created_at"
-        " FROM collaborators WHERE ws_id=? LIMIT ?;";
+        " FROM collaborators WHERE ws_id=? AND id > ? ORDER BY id ASC LIMIT ?;";
     int lim;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
@@ -107,7 +107,8 @@ CollabResult list_collabs(Db *db, CollabQuery q)
         r.err = ERR_DB; return r;
     }
     sqlite3_bind_int64(s, 1, q.ws_id);
-    sqlite3_bind_int(s, 2, lim);
+    sqlite3_bind_int64(s, 2, q.cursor);
+    sqlite3_bind_int(s, 3, lim);
     while (sqlite3_step(s) == SQLITE_ROW && r.count < 16) {
         const char *t;
         r.rows[r.count].id = sqlite3_column_int64(s, 0);
