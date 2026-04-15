@@ -25,6 +25,12 @@ UserResult store_user(Db *db, UserQuery q) __attribute__((warn_unused_result));
 OutcomeResult store_outcome(Db *db, OutcomeQuery q) __attribute__((warn_unused_result));
 OutcomeResult fetch_outcome(Db *db, OutcomeQuery q) __attribute__((warn_unused_result));
 
+NudgeResult store_nudge(Db *db, NudgeQuery q) __attribute__((warn_unused_result));
+NudgeResult fetch_nudge(Db *db, NudgeQuery q) __attribute__((warn_unused_result));
+
+LearnResult store_learning(Db *db, LearnQuery q) __attribute__((warn_unused_result));
+LearnResult fetch_learning(Db *db, LearnQuery q) __attribute__((warn_unused_result));
+
 SchedResult store_sched(Db *db, SchedQuery q) __attribute__((warn_unused_result));
 SchedResult fetch_sched(Db *db, SchedQuery q) __attribute__((warn_unused_result));
 
@@ -34,8 +40,5 @@ BudgetResult record_spend(Db *db, BudgetQuery q) __attribute__((warn_unused_resu
 
 MemResult store_mem(Db *db, MemQuery q) __attribute__((warn_unused_result));
 MemResult fetch_mem(Db *db, MemQuery q) __attribute__((warn_unused_result));
-
-NudgeResult store_nudge(Db *db, NudgeQuery q) __attribute__((warn_unused_result));
-NudgeResult list_nudges(Db *db, NudgeQuery q) __attribute__((warn_unused_result));
 
 #endif /* DB_H */

@@ -5,15 +5,12 @@
 #include "agents/channel.h"
 
 /*
- * Learn agent: extracts a lesson from a task outcome and returns
- * it as a MSG_RESULT with the lesson text in payload.
+ * Learn agent: extracts an insight from a completed measure outcome.
+ * In:  AgentMsg (MSG_LEARN, payload = outcome text, id = goal_id).
+ * Out: AgentMsg (MSG_RESULT, payload = "learned:<insight>").
  *
- * In:  AgentMsg (MSG_LEARN, payload = outcome text, id = task_id).
- * Out: AgentMsg (MSG_RESULT, payload = "learned:<summary>").
- *
- * The caller (coord or API layer) is responsible for persisting the
- * lesson into agent_memory via db/memory.c.  This agent is pure
- * computation — no I/O.
+ * The insight is the first 256 chars of the payload, prefixed with
+ * "learned:" so that the coordinator knows the Learn phase completed.
  */
 
 static AgentMsg make_result(AgentMsg src, Err err, const char *detail)
@@ -28,25 +25,26 @@ static AgentMsg make_result(AgentMsg src, Err err, const char *detail)
     return out;
 }
 
-static int has_content(const char *s)
+static int payload_has_content(const char *payload)
 {
     size_t i;
-    for (i = 0; s[i] != '\0'; i++)
-        if (s[i] != ' ' && s[i] != '\t' && s[i] != '\n') return 1;
+    for (i = 0; payload[i] != '\0'; i++) {
+        if (payload[i] != ' ' && payload[i] != '\t' && payload[i] != '\n')
+            return 1;
+    }
     return 0;
 }
 
 AgentMsg learn_handle(AgentMsg msg)
 {
-    char lesson[512];
+    char buf[512];
 
     if (msg.tag != MSG_LEARN)
         return make_result(msg, ERR_UNKNOWN, "not_a_learn_request");
 
-    if (!has_content(msg.payload))
-        return make_result(msg, ERR_NOT_FOUND, "learn:empty_outcome");
+    if (!payload_has_content(msg.payload))
+        return make_result(msg, ERR_NOT_FOUND, "learned:nothing:empty_input");
 
-    snprintf(lesson, sizeof(lesson), "learned:%lld:%.*s",
-             (long long)msg.id, 480, msg.payload);
-    return make_result(msg, ERR_OK, lesson);
+    snprintf(buf, sizeof(buf), "learned:%.480s", msg.payload);
+    return make_result(msg, ERR_OK, buf);
 }

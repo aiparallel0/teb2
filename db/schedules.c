@@ -1,23 +1,9 @@
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
-#include <stdio.h>
 #include <sqlite3.h>
 #include "core/types.h"
 #include "core/errors.h"
 #include "db/db.h"
-
-static const char *SCHEMA_SCHEDULES =
-    "CREATE TABLE IF NOT EXISTS schedules("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "task_id INTEGER NOT NULL,"
-    "run_at INTEGER NOT NULL);";
-
-static void ensure_sched_schema(struct sqlite3 *h)
-{
-    char *err = NULL;
-    (void)sqlite3_exec(h, SCHEMA_SCHEDULES, NULL, NULL, &err);
-    sqlite3_free(err);
-}
 
 SchedResult store_sched(Db *db, SchedQuery q)
 {
@@ -27,7 +13,6 @@ SchedResult store_sched(Db *db, SchedQuery q)
                       " RETURNING id;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_sched_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }
@@ -53,7 +38,6 @@ SchedResult fetch_sched(Db *db, SchedQuery q)
                       " WHERE task_id=? LIMIT 1;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_sched_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }

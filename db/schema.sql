@@ -49,6 +49,14 @@ CREATE TABLE IF NOT EXISTS outcomes (
     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
 
+CREATE TABLE IF NOT EXISTS learnings (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    goal_id    INTEGER NOT NULL,
+    insight    TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    FOREIGN KEY (goal_id) REFERENCES goals(id)
+);
+
 CREATE TABLE IF NOT EXISTS schedules (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id    INTEGER NOT NULL,
@@ -64,17 +72,17 @@ CREATE TABLE IF NOT EXISTS budgets (
 );
 
 CREATE TABLE IF NOT EXISTS spending (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     TEXT    NOT NULL,
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      TEXT    NOT NULL,
     amount_cents INTEGER NOT NULL,
-    created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+    created_at   INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
 
 CREATE TABLE IF NOT EXISTS agent_memory (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    agent      TEXT    NOT NULL,
-    key        TEXT    NOT NULL,
-    val        TEXT    NOT NULL DEFAULT '',
-    ts         INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent TEXT NOT NULL,
+    key   TEXT NOT NULL,
+    val   TEXT NOT NULL DEFAULT '',
+    ts    INTEGER NOT NULL DEFAULT (strftime('%s','now')),
     UNIQUE(agent, key)
 );

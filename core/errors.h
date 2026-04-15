@@ -5,6 +5,7 @@ typedef enum {
     ERR_OK       = 0,
     ERR_NOT_FOUND,
     ERR_AUTH,
+    ERR_INVALID,
     ERR_DB,
     ERR_IO,
     ERR_CRYPTO,

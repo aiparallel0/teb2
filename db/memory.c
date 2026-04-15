@@ -6,22 +6,6 @@
 #include "core/errors.h"
 #include "db/db.h"
 
-static const char *SCHEMA_MEMORY =
-    "CREATE TABLE IF NOT EXISTS agent_memory("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "agent TEXT NOT NULL,"
-    "key TEXT NOT NULL,"
-    "val TEXT NOT NULL DEFAULT '',"
-    "ts INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
-    "UNIQUE(agent,key));";
-
-static void ensure_mem_schema(struct sqlite3 *h)
-{
-    char *err = NULL;
-    (void)sqlite3_exec(h, SCHEMA_MEMORY, NULL, NULL, &err);
-    sqlite3_free(err);
-}
-
 static MemEntry row_to_mem(sqlite3_stmt *stmt)
 {
     MemEntry e;
@@ -49,7 +33,6 @@ MemResult store_mem(Db *db, MemQuery q)
         " RETURNING id,agent,key,val,ts;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_mem_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }
@@ -74,7 +57,6 @@ MemResult fetch_mem(Db *db, MemQuery q)
                       " WHERE agent=? AND key=? LIMIT 1;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_mem_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }

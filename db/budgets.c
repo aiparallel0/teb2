@@ -6,29 +6,6 @@
 #include "core/errors.h"
 #include "db/db.h"
 
-static const char *SCHEMA_BUDGETS =
-    "CREATE TABLE IF NOT EXISTS budgets("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "user_id TEXT NOT NULL UNIQUE,"
-    "limit_cents INTEGER NOT NULL DEFAULT 0,"
-    "spent_cents INTEGER NOT NULL DEFAULT 0);";
-
-static const char *SCHEMA_SPENDING =
-    "CREATE TABLE IF NOT EXISTS spending("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "user_id TEXT NOT NULL,"
-    "amount_cents INTEGER NOT NULL,"
-    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));";
-
-static void ensure_budget_schema(struct sqlite3 *h)
-{
-    char *err = NULL;
-    (void)sqlite3_exec(h, SCHEMA_BUDGETS, NULL, NULL, &err);
-    sqlite3_free(err);
-    (void)sqlite3_exec(h, SCHEMA_SPENDING, NULL, NULL, &err);
-    sqlite3_free(err);
-}
-
 BudgetResult store_budget(Db *db, BudgetQuery q)
 {
     BudgetResult r;
@@ -39,7 +16,6 @@ BudgetResult store_budget(Db *db, BudgetQuery q)
         " RETURNING id,user_id,limit_cents,spent_cents;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_budget_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }
@@ -67,7 +43,6 @@ BudgetResult fetch_budget(Db *db, BudgetQuery q)
                       " WHERE user_id=? LIMIT 1;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_budget_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }
@@ -96,7 +71,6 @@ BudgetResult record_spend(Db *db, BudgetQuery q)
                       " RETURNING id,user_id,limit_cents,spent_cents;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_budget_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, ins, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }

@@ -43,6 +43,7 @@ AgentMsg coord_handle(AgentMsg msg)
 {
     switch (msg.tag) {
     case MSG_GOAL_NEW:    return decompose_goal(msg);
+    case MSG_CLARIFY:     return clarify_handle(msg);
     case MSG_TASK_DONE:   return next_task(msg);
     case MSG_EXEC_REQ:    return research_handle(msg);
     case MSG_FINANCE_REQ: return finance_handle(msg);

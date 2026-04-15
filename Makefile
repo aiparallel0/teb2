@@ -8,14 +8,12 @@ LDFLAGS = -lsqlite3 -lcrypt
 
 SRCS = core/config.c \
        auth/hash.c auth/token.c auth/rbac.c \
-       db/goals.c db/tasks.c db/users.c db/outcomes.c \
-       db/schedules.c db/budgets.c db/memory.c db/nudges.c \
+       db/open.c db/goals.c db/tasks.c db/users.c db/outcomes.c db/nudges.c db/learn.c \
+       db/schedules.c db/budgets.c db/memory.c \
        exec/vault.c exec/http.c exec/browser.c \
-       agents/coord.c agents/finance.c agents/outreach.c agents/research.c \
-       agents/measure.c agents/learn.c \
-       api/goals.c api/tasks.c api/auth.c api/outcomes.c \
-       api/exec.c api/decompose.c api/schedules.c api/budgets.c api/nudges.c \
-       api/dispatch.c \
+       agents/coord.c agents/clarify.c agents/finance.c agents/outreach.c agents/research.c agents/measure.c agents/learn.c \
+       api/server.c api/goals.c api/tasks.c api/auth.c api/outcomes.c api/nudges.c api/learn.c \
+       api/exec.c api/decompose.c api/schedules.c api/budgets.c \
        main.c
 
 OBJS = $(SRCS:.c=.o)
