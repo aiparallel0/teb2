@@ -6,29 +6,10 @@
 #include "core/errors.h"
 #include "auth/auth.h"
 #include "db/db.h"
+#include "api/json.h"
 
-static HttpResp json_error(int status, const char *msg)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = status;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body),
-                                  "{\"error\":\"%s\"}", msg);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
-
-static HttpResp json_ok(const char *body)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = 200;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body), "%s", body);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
-
-static TaskResult create_subtask(Db *db, GoalResult gr, const char *prefix)
+static TaskResult create_subtask(Db *db, GoalResult gr,
+                                 const char *prefix)
 {
     TaskQuery tq;
     memset(&tq, 0, sizeof(tq));
@@ -81,7 +62,8 @@ HttpResp handle_decompose_run(HttpReq req, Ctx *ctx)
     if (gr.err != ERR_OK) return json_error(500, "status_error");
 
     snprintf(buf, sizeof(buf),
-             "{\"goal_id\":%lld,\"status\":\"decomposed\",\"tasks\":%d}",
+             "{\"goal_id\":%lld,\"status\":\"decomposed\","
+             "\"tasks\":%d}",
              (long long)gq.id, created);
     return json_ok(buf);
 }

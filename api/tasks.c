@@ -6,28 +6,9 @@
 #include "core/errors.h"
 #include "auth/auth.h"
 #include "db/db.h"
-static HttpResp json_error(int status, const char *msg)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = status;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body),
-                                  "{\"error\":\"%s\"}", msg);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
+#include "api/json.h"
+#include "api/escape.h"
 
-static HttpResp json_ok(const char *body)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = 200;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body), "%s", body);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
-
-static int extract_json_str(const char *body, const char *key, char *out, size_t outsz);
 HttpResp handle_task_update(HttpReq req, Ctx *ctx)
 {
     TaskQuery q;
@@ -73,7 +54,7 @@ HttpResp handle_task_status(HttpReq req, Ctx *ctx)
 {
     TaskQuery q;
     TaskResult tr;
-    char buf[256];
+    char buf[256], es[64];
     const char *idstr;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_TASK_READ))
@@ -85,24 +66,11 @@ HttpResp handle_task_status(HttpReq req, Ctx *ctx)
     tr = fetch_task(ctx->db, q);
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
+    json_escape(tr.rows[0].status, es, sizeof(es));
     snprintf(buf, sizeof(buf),
              "{\"id\":%lld,\"status\":\"%s\"}",
-             (long long)tr.rows[0].id, tr.rows[0].status);
+             (long long)tr.rows[0].id, es);
     return json_ok(buf);
-}
-
-static int extract_json_str(const char *body, const char *key,
-                            char *out, size_t outsz)
-{
-    const char *k = strstr(body, key), *v;
-    size_t i;
-    if (!k) return 0;
-    k += strlen(key);
-    while (*k == ' ' || *k == ':' || *k == '"') k++;
-    for (i = 0, v = k; i < outsz - 1 && v[i] && v[i] != '"'; i++)
-        out[i] = v[i];
-    out[i] = '\0';
-    return i > 0 ? 1 : 0;
 }
 
 HttpResp handle_task_create(HttpReq req, Ctx *ctx)
@@ -132,7 +100,7 @@ HttpResp handle_task_list(HttpReq req, Ctx *ctx)
 {
     TaskQuery q;
     TaskResult tr;
-    char buf[1024];
+    char buf[2048], et[512];
     int i, pos, added;
     const char *gidstr;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
@@ -146,10 +114,12 @@ HttpResp handle_task_list(HttpReq req, Ctx *ctx)
     tr = list_tasks(ctx->db, q);
     if (tr.err != ERR_OK) return json_error(500, "db_error");
     pos = snprintf(buf, sizeof(buf), "[");
-    for (i = 0; i < tr.count && pos > 0 && (size_t)pos < sizeof(buf) - 2; i++) {
+    for (i = 0; i < tr.count && pos > 0 && (size_t)pos < sizeof(buf) - 2;
+         i++) {
+        json_escape(tr.rows[i].title, et, sizeof(et));
         added = snprintf(buf + pos, sizeof(buf) - (size_t)pos,
                         "%s{\"id\":%lld,\"title\":\"%s\"}",
-                        i ? "," : "", (long long)tr.rows[i].id, tr.rows[i].title);
+                        i ? "," : "", (long long)tr.rows[i].id, et);
         if (added > 0) pos += added;
     }
     if (pos > 0 && (size_t)pos < sizeof(buf) - 1)

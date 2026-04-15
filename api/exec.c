@@ -7,27 +7,8 @@
 #include "auth/auth.h"
 #include "db/db.h"
 #include "agents/channel.h"
-
-static HttpResp json_error(int status, const char *msg)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = status;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body),
-                                  "{\"error\":\"%s\"}", msg);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
-
-static HttpResp json_ok(const char *body)
-{
-    HttpResp r;
-    memset(&r, 0, sizeof(r));
-    r.status   = 200;
-    r.body_len = (size_t)snprintf(r.body, sizeof(r.body), "%s", body);
-    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-    return r;
-}
+#include "api/json.h"
+#include "api/escape.h"
 
 /*
  * POST /exec/{task_id}
@@ -42,7 +23,7 @@ HttpResp handle_exec_run(HttpReq req, Ctx *ctx)
     OutcomeQuery oq;
     OutcomeResult otr;
     const char *idstr;
-    char buf[512];
+    char buf[1024], esnip[512];
     char snippet[200];
 
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
@@ -62,7 +43,8 @@ HttpResp handle_exec_run(HttpReq req, Ctx *ctx)
     in.tag = MSG_EXEC_REQ;
     in.id  = tr.rows[0].id;
     snprintf(in.user_id, sizeof(in.user_id), "%s", tr.rows[0].user_id);
-    snprintf(in.payload, sizeof(in.payload), "%s", tr.rows[0].description);
+    snprintf(in.payload, sizeof(in.payload), "%s",
+             tr.rows[0].description);
 
     out = coord_handle(in);
 
@@ -80,10 +62,11 @@ HttpResp handle_exec_run(HttpReq req, Ctx *ctx)
     if (tr.err != ERR_OK) return json_error(500, "status_error");
 
     snprintf(snippet, sizeof(snippet), "%.*s", 180, out.payload);
+    json_escape(snippet, esnip, sizeof(esnip));
     snprintf(buf, sizeof(buf),
              "{\"task_id\":%lld,\"status\":\"%s\",\"result\":\"%s\"}",
              (long long)otr.outcome.task_id,
              out.err == ERR_OK ? "done" : "failed",
-             snippet);
+             esnip);
     return json_ok(buf);
 }

@@ -15,11 +15,13 @@ HttpReq parse_request(const char *raw, size_t len)
     memset(&req, 0, sizeof(req));
     sp1 = memchr(p, ' ', (size_t)(end - p));
     if (!sp1) return req;
-    snprintf(req.method, sizeof(req.method), "%.*s", (int)(sp1 - p), p);
+    snprintf(req.method, sizeof(req.method), "%.*s",
+             (int)(sp1 - p), p);
     p = sp1 + 1;
     sp2 = memchr(p, ' ', (size_t)(end - p));
     if (!sp2) return req;
-    snprintf(req.path, sizeof(req.path), "%.*s", (int)(sp2 - p), p);
+    snprintf(req.path, sizeof(req.path), "%.*s",
+             (int)(sp2 - p), p);
     auth = strstr(raw, "\nAuthorization: ");
     if (auth) {
         auth += 16;
@@ -37,14 +39,20 @@ HttpReq parse_request(const char *raw, size_t len)
     return req;
 }
 
+#define CORS_HDRS \
+    "Access-Control-Allow-Origin: *\r\n" \
+    "Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS\r\n" \
+    "Access-Control-Allow-Headers: Content-Type, Authorization\r\n"
+
 void write_response(int fd, HttpResp resp)
 {
-    char    hdr[256];
+    char    hdr[512];
     int     hlen;
     ssize_t nw;
 
     hlen = snprintf(hdr, sizeof(hdr),
                     "HTTP/1.1 %d OK\r\nContent-Type: %s\r\n"
+                    CORS_HDRS
                     "Content-Length: %zu\r\n\r\n",
                     resp.status, resp.content_type, resp.body_len);
     nw = write(fd, hdr, (size_t)hlen);

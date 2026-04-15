@@ -5,6 +5,7 @@
 #include "core/types.h"
 #include "core/errors.h"
 #include "agents/channel.h"
+#include "agents/util.h"
 #include "db/db.h"
 #include "exec/exec.h"
 
@@ -24,31 +25,21 @@ static int64_t parse_cents(const char *payload)
     return cents;
 }
 
-static AgentMsg make_result(AgentMsg src, Err err, const char *detail)
-{
-    AgentMsg out;
-    memset(&out, 0, sizeof(out));
-    out.tag = MSG_RESULT;
-    out.id  = src.id;
-    snprintf(out.user_id, sizeof(out.user_id), "%s", src.user_id);
-    snprintf(out.payload, sizeof(out.payload), "%s", detail);
-    out.err = err;
-    return out;
-}
-
 static AgentMsg approve(AgentMsg msg)
 {
-    return make_result(msg, ERR_OK, "approved");
+    return agent_make_result(msg, ERR_OK, "approved");
 }
 
 static AgentMsg deny(AgentMsg msg)
 {
-    return make_result(msg, ERR_AUTH, "denied:requires_authorization");
+    return agent_make_result(msg, ERR_AUTH,
+                             "denied:requires_authorization");
 }
 
 static AgentMsg needs_confirm(AgentMsg msg)
 {
-    return make_result(msg, ERR_AUTH, "pending:awaiting_confirmation");
+    return agent_make_result(msg, ERR_AUTH,
+                             "pending:awaiting_confirmation");
 }
 
 AgentMsg finance_handle(AgentMsg msg)
@@ -56,7 +47,8 @@ AgentMsg finance_handle(AgentMsg msg)
     int64_t cents;
 
     if (msg.tag != MSG_FINANCE_REQ)
-        return make_result(msg, ERR_UNKNOWN, "not_a_finance_request");
+        return agent_make_result(msg, ERR_UNKNOWN,
+                                 "not_a_finance_request");
 
     cents = parse_cents(msg.payload);
 
