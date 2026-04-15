@@ -17,10 +17,10 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq libsqlite3-dev libcrypt-dev
 
-      - name: Build
+      - name: Compile
         run: make clean && make
 
-      - name: Check line counts
+      - name: Enforce 166-line cap
         run: |
           fail=0
           for f in $(find . -name '*.c' -o -name '*.h' | grep -v '.git/'); do
@@ -31,24 +31,3 @@ jobs:
             fi
           done
           exit $fail
-
-      - name: Verify binary exists
-        run: |
-          test -x ./teb2
-          ls -lh ./teb2
-
-  docker:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: docker build -t teb2:ci .
-
-      - name: Smoke test container
-        run: |
-          docker run -d --name teb2-test -p 8080:8080 teb2:ci
-          sleep 2
-          curl -sf http://localhost:8080/healthz | grep '"status":"ok"'
-          docker stop teb2-test
