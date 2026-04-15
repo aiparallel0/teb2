@@ -1,15 +1,15 @@
 #define _POSIX_C_SOURCE 200809L
-#include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-#include "core/types.h"
-#include "core/errors.h"
 #include "exec/exec.h"
+
+#define SSE_BUFSIZE 1024
 
 void sse_write(SseConn *c, const char *event, const char *data)
 {
-    char buf[1024];
+    char buf[SSE_BUFSIZE];
     int len;
+    size_t total, off;
     ssize_t nw;
 
     if (!c || !c->open || c->fd < 0) return;
@@ -20,9 +20,15 @@ void sse_write(SseConn *c, const char *event, const char *data)
         c->open = 0;
         return;
     }
-    nw = write(c->fd, buf, (size_t)len);
-    if (nw < 0) {
-        c->open = 0;
+    total = (size_t)len;
+    off = 0;
+    while (off < total) {
+        nw = write(c->fd, buf + off, total - off);
+        if (nw <= 0) {
+            c->open = 0;
+            return;
+        }
+        off += (size_t)nw;
     }
 }
 
