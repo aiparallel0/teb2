@@ -37,7 +37,7 @@ HttpResp handle_ws_get(HttpReq req, Ctx *ctx)
     char buf[256], en[128];
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     memset(&q, 0, sizeof(q));
-    q.id = strtoll(req.path + 11, NULL, 10);
+    q.id = strtoll(req.path + 12, NULL, 10);
     r = fetch_ws(ctx->db, q);
     if (r.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (r.err != ERR_OK) return json_error(500, "db_error");
@@ -117,7 +117,7 @@ HttpResp handle_chat_list(HttpReq req, Ctx *ctx)
     int i, off;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     memset(&q, 0, sizeof(q));
-    q.ws_id = strtoll(req.path + 7, NULL, 10);
+    q.ws_id = strtoll(req.path + 6, NULL, 10);
     q.limit = 16;
     r = list_chats(ctx->db, q);
     if (r.err != ERR_OK) return json_error(500, "db_error");
