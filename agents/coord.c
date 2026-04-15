@@ -9,6 +9,7 @@ AgentMsg finance_handle(AgentMsg msg);
 AgentMsg outreach_handle(AgentMsg msg);
 AgentMsg research_handle(AgentMsg msg);
 AgentMsg measure_handle(AgentMsg msg);
+AgentMsg learn_handle(AgentMsg msg);
 
 static AgentMsg decompose_goal(AgentMsg msg)
 {
@@ -55,6 +56,7 @@ AgentMsg coord_handle(AgentMsg msg)
     case MSG_NUDGE:       return outreach_handle(msg);
     case MSG_CHECKIN:     return next_task(msg);
     case MSG_MEASURE:     return measure_handle(msg);
+    case MSG_LEARN:       return learn_handle(msg);
     case MSG_RESULT:      return msg;
     default:              return unknown_msg(msg);
     }

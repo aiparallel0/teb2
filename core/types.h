@@ -127,4 +127,29 @@ typedef struct { struct sqlite3 *handle; } Db;
 
 typedef struct { Db *db; Config *cfg; UserClaims *user; } Ctx;
 
+
+typedef struct {
+    int64_t id;
+    char    user_id[64];
+    char    message[512];
+    int64_t created_at;
+} Nudge;
+
+typedef struct {
+    int64_t id; char user_id[64]; char message[512]; int limit;
+} NudgeQuery;
+typedef struct { Err err; Nudge nudge; } NudgeResult;
+
+typedef struct {
+    int64_t id;
+    int64_t goal_id;
+    char    insight[512];
+    int64_t created_at;
+} Learning;
+
+typedef struct {
+    int64_t id; int64_t goal_id; char insight[512]; int limit;
+} LearnQuery;
+typedef struct { Err err; Learning learning; } LearnResult;
+
 #endif /* TYPES_H */

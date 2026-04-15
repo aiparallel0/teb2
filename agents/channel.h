@@ -11,6 +11,7 @@ typedef enum {
     MSG_NUDGE,
     MSG_CHECKIN,
     MSG_MEASURE,
+    MSG_LEARN,
     MSG_RESULT
 } MsgTag;
 
