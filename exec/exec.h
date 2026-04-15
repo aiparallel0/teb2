@@ -20,4 +20,8 @@ BrowserResult browser_send(SerialCmd cmd, Cred *cred)
 NotifyResult  send_notify(NotifyReq req, Cred *cred)
     __attribute__((warn_unused_result));
 
+typedef struct { int fd; int open; } SseConn;
+void        sse_write(SseConn *c, const char *event, const char *data);
+void        sse_close(SseConn *c);
+
 #endif /* EXEC_H */
