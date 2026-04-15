@@ -6,21 +6,6 @@
 #include "core/errors.h"
 #include "db/db.h"
 
-static const char *SCHEMA_LEARNINGS =
-    "CREATE TABLE IF NOT EXISTS learnings("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "goal_id INTEGER NOT NULL,"
-    "insight TEXT NOT NULL,"
-    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
-    "FOREIGN KEY (goal_id) REFERENCES goals(id));";
-
-static void ensure_learnings_schema(struct sqlite3 *h)
-{
-    char *err = NULL;
-    (void)sqlite3_exec(h, SCHEMA_LEARNINGS, NULL, NULL, &err);
-    sqlite3_free(err);
-}
-
 static Learning row_to_learning(sqlite3_stmt *stmt)
 {
     Learning l;
@@ -42,7 +27,6 @@ LearnResult store_learning(Db *db, LearnQuery q)
                       " RETURNING id;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_learnings_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }
@@ -69,7 +53,6 @@ LearnResult fetch_learning(Db *db, LearnQuery q)
     const char *sql;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_learnings_schema(db->handle);
     if (q.id > 0) {
         sql = "SELECT id,goal_id,insight,created_at FROM learnings"
               " WHERE id=? LIMIT 1;";

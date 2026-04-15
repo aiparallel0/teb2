@@ -12,6 +12,10 @@ typedef enum {
     PERM_GOAL_WRITE,
     PERM_TASK_READ,
     PERM_TASK_WRITE,
+    PERM_NUDGE_READ,
+    PERM_NUDGE_WRITE,
+    PERM_LEARN_READ,
+    PERM_LEARN_WRITE,
     PERM_ADMIN
 } Permission;
 

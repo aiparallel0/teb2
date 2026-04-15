@@ -14,92 +14,64 @@
 #include "exec/exec.h"
 #include "agents/channel.h"
 #include "api/api.h"
+
 static volatile sig_atomic_t g_running = 1;
+
 static void handle_signal(int sig)
 {
     (void)sig;
     g_running = 0;
 }
-static void parse_request(const char *raw, size_t len, HttpReq *req)
+
+static HttpResp not_found(void)
 {
-    const char *end = raw + len;
-    const char *p   = raw;
-    const char *sp1, *sp2, *body, *auth;
-    memset(req, 0, sizeof(*req));
-    sp1 = memchr(p, ' ', (size_t)(end - p));
-    if (!sp1) return;
-    snprintf(req->method, sizeof(req->method), "%.*s", (int)(sp1 - p), p);
-    p = sp1 + 1;
-    sp2 = memchr(p, ' ', (size_t)(end - p));
-    if (!sp2) return;
-    snprintf(req->path, sizeof(req->path), "%.*s", (int)(sp2 - p), p);
-    auth = strstr(raw, "\nAuthorization: ");
-    if (auth) {
-        auth += 16;
-        snprintf(req->auth_header, sizeof(req->auth_header),
-                 "%.*s", (int)(strcspn(auth, "\r\n")), auth);
-    }
-    body = strstr(raw, "\r\n\r\n");
-    if (body) {
-        body += 4;
-        req->body_len = (size_t)(end - body);
-        if (req->body_len >= sizeof(req->body))
-            req->body_len = sizeof(req->body) - 1;
-        memcpy(req->body, body, req->body_len);
-    }
+    HttpResp r;
+    memset(&r, 0, sizeof(r));
+    r.status   = 404;
+    r.body_len = (size_t)snprintf(r.body, sizeof(r.body),
+                                  "{\"error\":\"not_found\"}");
+    snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
+    return r;
 }
-static void write_response(int fd, HttpResp resp)
-{
-    char    hdr[256];
-    int     hlen;
-    ssize_t nw;
-    hlen = snprintf(hdr, sizeof(hdr),
-                    "HTTP/1.1 %d OK\r\nContent-Type: %s\r\n"
-                    "Content-Length: %zu\r\n\r\n",
-                    resp.status, resp.content_type, resp.body_len);
-    nw = write(fd, hdr, (size_t)hlen);
-    if (nw < 0) return;
-    if (resp.body_len > 0) {
-        nw = write(fd, resp.body, resp.body_len);
-        (void)nw;
-    }
-}
+
 static HttpResp dispatch(HttpReq req, Ctx *ctx)
 {
     const char *p = req.path;
     if (strncmp(p, "/goals", 6) == 0) {
-        if (strcmp(req.method, "POST") == 0)   return handle_goal_create(req, ctx);
-        if (strcmp(req.method, "GET") == 0)    return handle_goal_list(req, ctx);
+        if (strcmp(req.method, "POST") == 0) return handle_goal_create(req, ctx);
+        if (strcmp(req.method, "GET") == 0)  return handle_goal_list(req, ctx);
     }
     if (strncmp(p, "/goal/", 6) == 0) {
-        if (strcmp(req.method, "GET") == 0)    return handle_goal_get(req, ctx);
-        if (strcmp(req.method, "POST") == 0)   return handle_goal_decompose(req, ctx);
+        if (strcmp(req.method, "GET") == 0)  return handle_goal_get(req, ctx);
+        if (strcmp(req.method, "POST") == 0) return handle_goal_decompose(req, ctx);
     }
     if (strncmp(p, "/tasks/goal/", 12) == 0 && strcmp(req.method, "GET") == 0)
         return handle_task_list(req, ctx);
     if (strcmp(p, "/tasks") == 0 && strcmp(req.method, "POST") == 0)
         return handle_task_create(req, ctx);
     if (strncmp(p, "/tasks/", 7) == 0) {
-        if (strcmp(req.method, "PUT") == 0)    return handle_task_update(req, ctx);
-        if (strcmp(req.method, "POST") == 0)   return handle_task_execute(req, ctx);
-        if (strcmp(req.method, "GET") == 0)    return handle_task_status(req, ctx);
+        if (strcmp(req.method, "PUT") == 0)  return handle_task_update(req, ctx);
+        if (strcmp(req.method, "POST") == 0) return handle_task_execute(req, ctx);
+        if (strcmp(req.method, "GET") == 0)  return handle_task_status(req, ctx);
     }
-    if (strcmp(p, "/auth/register") == 0)      return handle_register(req, ctx);
-    if (strcmp(p, "/auth/login")    == 0)      return handle_login(req, ctx);
-    if (strcmp(p, "/auth/refresh")  == 0)      return handle_refresh(req, ctx);
+    if (strcmp(p, "/auth/register") == 0) return handle_register(req, ctx);
+    if (strcmp(p, "/auth/login") == 0)    return handle_login(req, ctx);
+    if (strcmp(p, "/auth/refresh") == 0)  return handle_refresh(req, ctx);
     if (strcmp(p, "/outcomes") == 0 && strcmp(req.method, "POST") == 0)
         return handle_outcome_store(req, ctx);
     if (strncmp(p, "/outcome/", 9) == 0 && strcmp(req.method, "GET") == 0)
         return handle_outcome_get(req, ctx);
-    {
-        HttpResp r;
-        memset(&r, 0, sizeof(r));
-        r.status   = 404;
-        r.body_len = (size_t)snprintf(r.body, sizeof(r.body), "{\"error\":\"not_found\"}");
-        snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-        return r;
-    }
+    if (strcmp(p, "/nudges") == 0 && strcmp(req.method, "POST") == 0)
+        return handle_nudge_store(req, ctx);
+    if (strncmp(p, "/nudge/", 7) == 0 && strcmp(req.method, "GET") == 0)
+        return handle_nudge_get(req, ctx);
+    if (strcmp(p, "/learnings") == 0 && strcmp(req.method, "POST") == 0)
+        return handle_learn_store(req, ctx);
+    if (strncmp(p, "/learning/", 10) == 0 && strcmp(req.method, "GET") == 0)
+        return handle_learn_get(req, ctx);
+    return not_found();
 }
+
 int main(int argc, char **argv)
 {
     Config cfg;
@@ -146,7 +118,7 @@ int main(int argc, char **argv)
         n = read(conn, buf, sizeof(buf) - 1);
         if (n > 0) {
             buf[n] = '\0';
-            parse_request(buf, (size_t)n, &req);
+            req = parse_request(buf, (size_t)n);
             memset(&ctx, 0, sizeof(ctx));
             ctx.db  = &db;
             ctx.cfg = &cfg;

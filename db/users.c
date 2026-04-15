@@ -6,21 +6,6 @@
 #include "core/errors.h"
 #include "db/db.h"
 
-static const char *SCHEMA_USERS =
-    "CREATE TABLE IF NOT EXISTS users("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "email TEXT NOT NULL UNIQUE,"
-    "password_hash TEXT NOT NULL,"
-    "role INTEGER NOT NULL DEFAULT 0,"
-    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));";
-
-static void ensure_users_schema(struct sqlite3 *h)
-{
-    char *err = NULL;
-    (void)sqlite3_exec(h, SCHEMA_USERS, NULL, NULL, &err);
-    sqlite3_free(err);
-}
-
 static User row_to_user(sqlite3_stmt *stmt)
 {
     User u;
@@ -43,7 +28,6 @@ UserResult fetch_user(Db *db, UserQuery q)
     const char *sql;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_users_schema(db->handle);
     if (q.id > 0) {
         sql = "SELECT id,email,password_hash,role FROM users WHERE id=? LIMIT 1;";
         if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -75,7 +59,6 @@ UserResult store_user(Db *db, UserQuery q)
                       " RETURNING id;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_users_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }

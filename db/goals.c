@@ -6,47 +6,6 @@
 #include "core/errors.h"
 #include "db/db.h"
 
-static const char *SCHEMA_GOALS =
-    "CREATE TABLE IF NOT EXISTS goals("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "user_id TEXT NOT NULL,"
-    "title TEXT NOT NULL,"
-    "description TEXT NOT NULL DEFAULT '',"
-    "status TEXT NOT NULL DEFAULT 'pending',"
-    "parent_id INTEGER NOT NULL DEFAULT 0,"
-    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));";
-
-Err db_open(const char *path, Db *out)
-{
-    char *errmsg = NULL;
-    int rc;
-
-    if (!path || !out) return ERR_DB;
-    out->handle = NULL;
-    rc = sqlite3_open(path, &out->handle);
-    if (rc != SQLITE_OK) {
-        sqlite3_close(out->handle);
-        out->handle = NULL;
-        return ERR_DB;
-    }
-    rc = sqlite3_exec(out->handle, SCHEMA_GOALS, NULL, NULL, &errmsg);
-    if (rc != SQLITE_OK) {
-        sqlite3_free(errmsg);
-        sqlite3_close(out->handle);
-        out->handle = NULL;
-        return ERR_DB;
-    }
-    return ERR_OK;
-}
-
-void db_close(Db *db)
-{
-    if (db && db->handle) {
-        sqlite3_close(db->handle);
-        db->handle = NULL;
-    }
-}
-
 static Goal row_to_goal(sqlite3_stmt *stmt)
 {
     Goal g;

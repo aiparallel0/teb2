@@ -6,20 +6,6 @@
 #include "core/errors.h"
 #include "db/db.h"
 
-static const char *SCHEMA_NUDGES =
-    "CREATE TABLE IF NOT EXISTS nudges("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "user_id TEXT NOT NULL,"
-    "message TEXT NOT NULL,"
-    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));";
-
-static void ensure_nudges_schema(struct sqlite3 *h)
-{
-    char *err = NULL;
-    (void)sqlite3_exec(h, SCHEMA_NUDGES, NULL, NULL, &err);
-    sqlite3_free(err);
-}
-
 static Nudge row_to_nudge(sqlite3_stmt *stmt)
 {
     Nudge n;
@@ -42,7 +28,6 @@ NudgeResult store_nudge(Db *db, NudgeQuery q)
                       " RETURNING id;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_nudges_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }
@@ -68,7 +53,6 @@ NudgeResult fetch_nudge(Db *db, NudgeQuery q)
     const char *sql;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_nudges_schema(db->handle);
     if (q.id > 0) {
         sql = "SELECT id,user_id,message,created_at FROM nudges"
               " WHERE id=? LIMIT 1;";

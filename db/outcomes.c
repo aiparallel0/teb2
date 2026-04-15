@@ -6,20 +6,6 @@
 #include "core/errors.h"
 #include "db/db.h"
 
-static const char *SCHEMA_OUTCOMES =
-    "CREATE TABLE IF NOT EXISTS outcomes("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "task_id INTEGER NOT NULL,"
-    "result TEXT NOT NULL,"
-    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));";
-
-static void ensure_outcomes_schema(struct sqlite3 *h)
-{
-    char *err = NULL;
-    (void)sqlite3_exec(h, SCHEMA_OUTCOMES, NULL, NULL, &err);
-    sqlite3_free(err);
-}
-
 static Outcome row_to_outcome(sqlite3_stmt *stmt)
 {
     Outcome o;
@@ -41,7 +27,6 @@ OutcomeResult store_outcome(Db *db, OutcomeQuery q)
                       " RETURNING id;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_outcomes_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }
@@ -66,7 +51,6 @@ OutcomeResult fetch_outcome(Db *db, OutcomeQuery q)
     const char *sql;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_outcomes_schema(db->handle);
     if (q.id > 0) {
         sql = "SELECT id,task_id,result,created_at FROM outcomes"
               " WHERE id=? LIMIT 1;";
