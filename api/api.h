@@ -3,6 +3,8 @@
 
 #include "core/types.h"
 
+/* HttpReq.body max is 4095 bytes; larger payloads are truncated. */
+
 /* api/server.c */
 HttpReq  parse_request(const char *raw, size_t len);
 HttpResp dispatch(HttpReq req, Ctx *ctx);
@@ -118,5 +120,9 @@ HttpResp handle_metrics(HttpReq req, Ctx *ctx);
 /* api/oauth.c */
 HttpResp handle_oauth_redirect(HttpReq req, Ctx *ctx);
 HttpResp handle_oauth_callback(HttpReq req, Ctx *ctx);
+
+/* api/static.c */
+HttpResp handle_ui_index(HttpReq req, Ctx *ctx);
+HttpResp handle_ui_appjs(HttpReq req, Ctx *ctx);
 
 #endif /* API_H */

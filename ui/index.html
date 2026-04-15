@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>teb2</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#111;color:#eee;min-height:100vh;display:flex;flex-direction:column}
+header{padding:1rem;background:#1a1a1a;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:1.2rem;font-weight:600}
+#auth-bar{display:flex;gap:.5rem;align-items:center}
+#auth-bar input{background:#222;border:1px solid #444;color:#eee;padding:.3rem .5rem;border-radius:4px;font-size:.85rem}
+#auth-bar button{background:#2563eb;color:#fff;border:none;padding:.3rem .8rem;border-radius:4px;cursor:pointer;font-size:.85rem}
+main{flex:1;padding:1rem;max-width:64rem;margin:0 auto;width:100%}
+.section{margin-bottom:1.5rem}
+.section h2{font-size:1rem;margin-bottom:.5rem;color:#aaa}
+.card{background:#1a1a1a;border:1px solid #333;border-radius:6px;padding:.75rem;margin-bottom:.5rem}
+.card .title{font-weight:600}
+.card .meta{font-size:.8rem;color:#888;margin-top:.25rem}
+#goal-form,#task-form{display:flex;gap:.5rem;margin-bottom:1rem}
+#goal-form input,#task-form input{flex:1;background:#222;border:1px solid #444;color:#eee;padding:.4rem .6rem;border-radius:4px}
+#goal-form button,#task-form button{background:#16a34a;color:#fff;border:none;padding:.4rem .8rem;border-radius:4px;cursor:pointer}
+.status{display:inline-block;padding:.1rem .4rem;border-radius:3px;font-size:.75rem}
+.status-active{background:#16a34a33;color:#4ade80}
+.status-done{background:#2563eb33;color:#60a5fa}
+.status-pending{background:#eab30833;color:#facc15}
+#error-bar{background:#dc262633;color:#f87171;padding:.5rem;border-radius:4px;margin-bottom:1rem;display:none}
+#health{font-size:.8rem;color:#888}
+</style>
+</head>
+<body>
+<header>
+<h1>teb2</h1>
+<div id="auth-bar">
+<span id="health"></span>
+<input id="email" type="text" placeholder="email">
+<input id="password" type="password" placeholder="password">
+<button onclick="doLogin()">Login</button>
+<button onclick="doRegister()">Register</button>
+<button onclick="doLogout()" style="background:#dc2626">Logout</button>
+</div>
+</header>
+<main>
+<div id="error-bar"></div>
+<div class="section">
+<h2>Goals</h2>
+<div id="goal-form">
+<input id="goal-title" placeholder="New goal title">
+<button onclick="createGoal()">Add</button>
+</div>
+<div id="goal-list"></div>
+</div>
+<div class="section">
+<h2>Tasks</h2>
+<div id="task-form">
+<input id="task-title" placeholder="Task title">
+<input id="task-goal" placeholder="Goal ID" style="max-width:6rem">
+<button onclick="createTask()">Add</button>
+</div>
+<div id="task-list"></div>
+</div>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

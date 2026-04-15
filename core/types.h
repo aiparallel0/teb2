@@ -131,7 +131,7 @@ typedef enum {
     MSG_DECOMPOSE, MSG_PLUGIN, MSG_OAUTH, MSG_NOTIFY
 } MsgTag;
 typedef struct {
-    MsgTag tag; int64_t id; char user_id[64]; char payload[512]; Err err; Db *db;
+    MsgTag tag; int64_t id; char user_id[64]; char payload[512]; Err err; Db *db; Config *cfg;
 } AgentMsg;
 
 typedef struct {

@@ -87,6 +87,10 @@ static HttpResp dispatch_internal(HttpReq req, Ctx *ctx)
     const char *p = req.path;
     const char *rlkey;
     if (strcmp(req.method, "OPTIONS") == 0) return options_resp();
+    if (strcmp(p, "/") == 0 && strcmp(req.method, "GET") == 0)
+        return handle_ui_index(req, ctx);
+    if (strcmp(p, "/app.js") == 0 && strcmp(req.method, "GET") == 0)
+        return handle_ui_appjs(req, ctx);
     if (strcmp(p, "/healthz") == 0 && strcmp(req.method, "GET") == 0)
         return handle_healthz(req, ctx);
     if (strcmp(p, "/metrics") == 0 && strcmp(req.method, "GET") == 0)

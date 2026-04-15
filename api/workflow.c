@@ -36,6 +36,7 @@ HttpResp handle_run_create(HttpReq req, Ctx *ctx)
     msg.tag = MSG_GOAL_NEW;
     msg.id  = rq.goal_id;
     msg.db  = ctx->db;
+    msg.cfg = ctx->cfg;
     snprintf(msg.user_id, sizeof(msg.user_id), "%lld",
              (long long)ctx->user->user_id);
     snprintf(msg.payload, sizeof(msg.payload), "%lld", (long long)rq.goal_id);
