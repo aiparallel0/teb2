@@ -27,7 +27,7 @@ function loadROI() {
         var m = r.roi || r;
         if (!m || !m.id) { teb.empty("roi-detail", "No ROI data"); return; }
         var ratio = m.cost_cents > 0
-            ? ((m.value_cents / m.cost_cents) * 100).toFixed(0) : "∞";
+            ? (((m.value_cents - m.cost_cents) / m.cost_cents) * 100).toFixed(0) : "∞";
         el.innerHTML = '<div class="grid">'
             + '<div class="stat"><div class="val">$'
             + (m.value_cents / 100).toFixed(2)
