@@ -14,12 +14,15 @@
 #include "exec/exec.h"
 #include "agents/channel.h"
 #include "api/api.h"
+
 static volatile sig_atomic_t g_running = 1;
+
 static void handle_signal(int sig)
 {
     (void)sig;
     g_running = 0;
 }
+
 static void parse_request(const char *raw, size_t len, HttpReq *req)
 {
     const char *end = raw + len;
@@ -48,6 +51,7 @@ static void parse_request(const char *raw, size_t len, HttpReq *req)
         memcpy(req->body, body, req->body_len);
     }
 }
+
 static void write_response(int fd, HttpResp resp)
 {
     char    hdr[256];
@@ -64,42 +68,7 @@ static void write_response(int fd, HttpResp resp)
         (void)nw;
     }
 }
-static HttpResp dispatch(HttpReq req, Ctx *ctx)
-{
-    const char *p = req.path;
-    if (strncmp(p, "/goals", 6) == 0) {
-        if (strcmp(req.method, "POST") == 0)   return handle_goal_create(req, ctx);
-        if (strcmp(req.method, "GET") == 0)    return handle_goal_list(req, ctx);
-    }
-    if (strncmp(p, "/goal/", 6) == 0) {
-        if (strcmp(req.method, "GET") == 0)    return handle_goal_get(req, ctx);
-        if (strcmp(req.method, "POST") == 0)   return handle_goal_decompose(req, ctx);
-    }
-    if (strncmp(p, "/tasks/goal/", 12) == 0 && strcmp(req.method, "GET") == 0)
-        return handle_task_list(req, ctx);
-    if (strcmp(p, "/tasks") == 0 && strcmp(req.method, "POST") == 0)
-        return handle_task_create(req, ctx);
-    if (strncmp(p, "/tasks/", 7) == 0) {
-        if (strcmp(req.method, "PUT") == 0)    return handle_task_update(req, ctx);
-        if (strcmp(req.method, "POST") == 0)   return handle_task_execute(req, ctx);
-        if (strcmp(req.method, "GET") == 0)    return handle_task_status(req, ctx);
-    }
-    if (strcmp(p, "/auth/register") == 0)      return handle_register(req, ctx);
-    if (strcmp(p, "/auth/login")    == 0)      return handle_login(req, ctx);
-    if (strcmp(p, "/auth/refresh")  == 0)      return handle_refresh(req, ctx);
-    if (strcmp(p, "/outcomes") == 0 && strcmp(req.method, "POST") == 0)
-        return handle_outcome_store(req, ctx);
-    if (strncmp(p, "/outcome/", 9) == 0 && strcmp(req.method, "GET") == 0)
-        return handle_outcome_get(req, ctx);
-    {
-        HttpResp r;
-        memset(&r, 0, sizeof(r));
-        r.status   = 404;
-        r.body_len = (size_t)snprintf(r.body, sizeof(r.body), "{\"error\":\"not_found\"}");
-        snprintf(r.content_type, sizeof(r.content_type), "%s", "application/json");
-        return r;
-    }
-}
+
 int main(int argc, char **argv)
 {
     Config cfg;

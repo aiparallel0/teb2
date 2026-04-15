@@ -11,6 +11,7 @@ typedef enum {
     MSG_NUDGE,
     MSG_CHECKIN,
     MSG_MEASURE,
+    MSG_LEARN,
     MSG_RESULT
 } MsgTag;
 
@@ -21,5 +22,12 @@ typedef struct {
     char    payload[512]; /* serialized data for this message type */
     Err     err;
 } AgentMsg;
+
+AgentMsg coord_handle(AgentMsg msg);
+AgentMsg finance_handle(AgentMsg msg);
+AgentMsg outreach_handle(AgentMsg msg);
+AgentMsg research_handle(AgentMsg msg);
+AgentMsg measure_handle(AgentMsg msg);
+AgentMsg learn_handle(AgentMsg msg);
 
 #endif /* CHANNEL_H */

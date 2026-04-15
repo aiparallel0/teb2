@@ -127,4 +127,35 @@ typedef struct { struct sqlite3 *handle; } Db;
 
 typedef struct { Db *db; Config *cfg; UserClaims *user; } Ctx;
 
+
+typedef struct {
+    int64_t id; int64_t task_id; int64_t run_at;
+} SchedEntry;
+
+typedef struct { int64_t id; int64_t task_id; int64_t run_at; int limit; } SchedQuery;
+typedef struct { Err err; SchedEntry entry; } SchedResult;
+
+typedef struct {
+    int64_t id; char user_id[64]; int64_t limit_cents; int64_t spent_cents;
+} Budget;
+
+typedef struct { int64_t id; char user_id[64]; int64_t amount_cents; } BudgetQuery;
+typedef struct { Err err; Budget budget; } BudgetResult;
+
+typedef struct {
+    int64_t id; char agent[64]; char key[128]; char val[512]; int64_t ts;
+} MemEntry;
+
+typedef struct {
+    int64_t id; char agent[64]; char key[128]; char val[512]; int limit;
+} MemQuery;
+typedef struct { Err err; MemEntry entry; } MemResult;
+
+typedef struct {
+    int64_t id; char user_id[64]; char message[512]; int64_t created_at;
+} Nudge;
+
+typedef struct { int64_t id; char user_id[64]; char message[512]; int limit; } NudgeQuery;
+typedef struct { Err err; Nudge nudge; int count; } NudgeResult;
+
 #endif /* TYPES_H */

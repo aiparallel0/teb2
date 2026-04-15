@@ -48,3 +48,33 @@ CREATE TABLE IF NOT EXISTS outcomes (
     result     TEXT    NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
+
+CREATE TABLE IF NOT EXISTS schedules (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id    INTEGER NOT NULL,
+    run_at     INTEGER NOT NULL,
+    FOREIGN KEY (task_id) REFERENCES tasks(id)
+);
+
+CREATE TABLE IF NOT EXISTS budgets (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     TEXT    NOT NULL UNIQUE,
+    limit_cents INTEGER NOT NULL DEFAULT 0,
+    spent_cents INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS spending (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     TEXT    NOT NULL,
+    amount_cents INTEGER NOT NULL,
+    created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE TABLE IF NOT EXISTS agent_memory (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent      TEXT    NOT NULL,
+    key        TEXT    NOT NULL,
+    val        TEXT    NOT NULL DEFAULT '',
+    ts         INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    UNIQUE(agent, key)
+);
