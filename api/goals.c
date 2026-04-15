@@ -59,7 +59,7 @@ HttpResp handle_goal_list(HttpReq req, Ctx *ctx)
     GoalResult gr;
     char buf[2048], et[512];
     int i, pos, added;
-    (void)req;
+    int64_t next_cursor;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_GOAL_READ))
         return json_error(403, "forbidden");
@@ -67,9 +67,12 @@ HttpResp handle_goal_list(HttpReq req, Ctx *ctx)
     snprintf(q.user_id, sizeof(q.user_id), "%lld",
              (long long)ctx->user->user_id);
     q.limit = 16;
+    q.cursor = extract_cursor(req.path);
     gr = list_goals(ctx->db, q);
     if (gr.err != ERR_OK) return json_error(500, "db_error");
-    pos = snprintf(buf, sizeof(buf), "[");
+    next_cursor = (gr.count > 0) ? gr.rows[gr.count - 1].id : 0;
+    pos = snprintf(buf, sizeof(buf), "{\"next_cursor\":%lld,\"items\":[",
+                   (long long)next_cursor);
     for (i = 0; i < gr.count; i++) {
         if (pos < 0 || (size_t)pos >= sizeof(buf) - 2) break;
         json_escape(gr.rows[i].title, et, sizeof(et));
@@ -78,8 +81,8 @@ HttpResp handle_goal_list(HttpReq req, Ctx *ctx)
                         i ? "," : "", (long long)gr.rows[i].id, et);
         if (added > 0) pos += added;
     }
-    if (pos >= 0 && (size_t)pos < sizeof(buf) - 1)
-        pos += snprintf(buf + pos, sizeof(buf) - (size_t)pos, "]");
+    if (pos >= 0 && (size_t)pos < sizeof(buf) - 3)
+        pos += snprintf(buf + pos, sizeof(buf) - (size_t)pos, "]}");
     (void)pos;
     return json_ok(buf);
 }

@@ -34,6 +34,14 @@ static void apply_env_line(const char *line, Config *cfg)
         copy_strip(cfg->secret,  sizeof(cfg->secret),  eq + 1);
     else if (strcmp(key, "PORT") == 0)
         cfg->port = atoi(eq + 1);
+    else if (strcmp(key, "SMTP_HOST") == 0)
+        copy_strip(cfg->smtp_host, sizeof(cfg->smtp_host), eq + 1);
+    else if (strcmp(key, "SMTP_PORT") == 0)
+        cfg->smtp_port = atoi(eq + 1);
+    else if (strcmp(key, "SMTP_USER") == 0)
+        copy_strip(cfg->smtp_user, sizeof(cfg->smtp_user), eq + 1);
+    else if (strcmp(key, "SMTP_PASS") == 0)
+        copy_strip(cfg->smtp_pass, sizeof(cfg->smtp_pass), eq + 1);
 }
 
 Config load_config(const char *env_path)
@@ -45,6 +53,7 @@ Config load_config(const char *env_path)
 
     memset(&cfg, 0, sizeof(cfg));
     cfg.port = 8080;
+    cfg.smtp_port = 587;
     snprintf(cfg.db_path, sizeof(cfg.db_path), "%s", "teb2.db");
     snprintf(cfg.secret,  sizeof(cfg.secret),  "%s", "change_me_in_production");
 
@@ -55,9 +64,13 @@ Config load_config(const char *env_path)
         fclose(f);
     }
 
-    if ((v = getenv("DB_PATH"))) snprintf(cfg.db_path, sizeof(cfg.db_path), "%s", v);
-    if ((v = getenv("SECRET")))  snprintf(cfg.secret,  sizeof(cfg.secret),  "%s", v);
-    if ((v = getenv("PORT")))    cfg.port = atoi(v);
+    if ((v = getenv("DB_PATH")))   snprintf(cfg.db_path,   sizeof(cfg.db_path),   "%s", v);
+    if ((v = getenv("SECRET")))    snprintf(cfg.secret,    sizeof(cfg.secret),    "%s", v);
+    if ((v = getenv("PORT")))      cfg.port = atoi(v);
+    if ((v = getenv("SMTP_HOST"))) snprintf(cfg.smtp_host, sizeof(cfg.smtp_host), "%s", v);
+    if ((v = getenv("SMTP_PORT"))) cfg.smtp_port = atoi(v);
+    if ((v = getenv("SMTP_USER"))) snprintf(cfg.smtp_user, sizeof(cfg.smtp_user), "%s", v);
+    if ((v = getenv("SMTP_PASS"))) snprintf(cfg.smtp_pass, sizeof(cfg.smtp_pass), "%s", v);
 
     return cfg;
 }

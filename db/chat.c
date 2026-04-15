@@ -42,7 +42,8 @@ ChatResult list_chats(Db *db, ChatQuery q)
     ChatResult r;
     sqlite3_stmt *s = NULL;
     const char *sql = "SELECT id,ws_id,sender_id,body,created_at"
-        " FROM chat_messages WHERE ws_id=? ORDER BY id DESC LIMIT ?;";
+        " FROM chat_messages WHERE ws_id=? AND id > ?"
+        " ORDER BY id ASC LIMIT ?;";
     int lim;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
@@ -51,7 +52,8 @@ ChatResult list_chats(Db *db, ChatQuery q)
         r.err = ERR_DB; return r;
     }
     sqlite3_bind_int64(s, 1, q.ws_id);
-    sqlite3_bind_int(s, 2, lim);
+    sqlite3_bind_int64(s, 2, q.cursor);
+    sqlite3_bind_int(s, 3, lim);
     while (sqlite3_step(s) == SQLITE_ROW && r.count < 16) {
         const char *t;
         r.rows[r.count].id = sqlite3_column_int64(s, 0);

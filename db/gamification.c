@@ -68,7 +68,8 @@ XpResult list_xp(Db *db, XpQuery q)
     XpResult r;
     sqlite3_stmt *s = NULL;
     const char *sql = "SELECT user_id,SUM(amount) as total"
-        " FROM xp_events GROUP BY user_id ORDER BY total DESC LIMIT ?;";
+        " FROM xp_events GROUP BY user_id ORDER BY total DESC"
+        " LIMIT ? OFFSET ?;";
     int lim;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
@@ -77,6 +78,7 @@ XpResult list_xp(Db *db, XpQuery q)
         r.err = ERR_DB; return r;
     }
     sqlite3_bind_int(s, 1, lim);
+    sqlite3_bind_int(s, 2, (int)q.cursor);
     if (sqlite3_step(s) == SQLITE_ROW) {
         const char *t;
         t = (const char *)sqlite3_column_text(s, 0);

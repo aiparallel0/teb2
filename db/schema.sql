@@ -214,3 +214,38 @@ CREATE TABLE IF NOT EXISTS feature_votes (
     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
     UNIQUE(user_id, feature)
 );
+
+CREATE TABLE IF NOT EXISTS assets (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     TEXT    NOT NULL,
+    filename    TEXT    NOT NULL,
+    mime_type   TEXT    NOT NULL DEFAULT 'application/octet-stream',
+    size_bytes  INTEGER NOT NULL DEFAULT 0,
+    path        TEXT    NOT NULL,
+    created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE TABLE IF NOT EXISTS workflow_runs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    goal_id     INTEGER NOT NULL,
+    status      TEXT    NOT NULL DEFAULT 'pending',
+    started_at  INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    finished_at INTEGER NOT NULL DEFAULT 0,
+    error_msg   TEXT    NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS workflow_steps (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id      INTEGER NOT NULL,
+    step_index  INTEGER NOT NULL,
+    agent       TEXT    NOT NULL,
+    payload     TEXT    NOT NULL DEFAULT '',
+    status      TEXT    NOT NULL DEFAULT 'pending',
+    result      TEXT    NOT NULL DEFAULT '',
+    created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    FOREIGN KEY (run_id) REFERENCES workflow_runs(id)
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS search_idx USING fts5(
+    entity, entity_id UNINDEXED, content
+);

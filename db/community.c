@@ -13,6 +13,7 @@ BlogResult store_blog(Db *db, BlogQuery q)
     sqlite3_stmt *s = NULL;
     const char *sql = "INSERT INTO blog_posts(user_id,title,body)"
         " VALUES(?,?,?) RETURNING id,user_id,title,body,created_at;";
+    char buf[768];
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
     if (sqlite3_prepare_v2(db->handle, sql, -1, &s, NULL) != SQLITE_OK) {
@@ -34,6 +35,10 @@ BlogResult store_blog(Db *db, BlogQuery q)
         r.err = ERR_OK;
     } else { r.err = ERR_DB; }
     sqlite3_finalize(s);
+    if (r.err == ERR_OK) {
+        snprintf(buf, sizeof(buf), "%s %s", r.post.title, r.post.body);
+        { Err ie = index_entity(db, "blog", r.post.id, buf); (void)ie; }
+    }
     return r;
 }
 

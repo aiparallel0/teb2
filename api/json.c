@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "core/types.h"
 #include "api/json.h"
 
@@ -40,4 +41,14 @@ int extract_json_str(const char *body, const char *key,
         out[i] = v[i];
     out[i] = '\0';
     return i > 0 ? 1 : 0;
+}
+
+int64_t extract_cursor(const char *path)
+{
+    const char *p;
+
+    p = strstr(path, "?cursor=");
+    if (!p) p = strstr(path, "&cursor=");
+    if (!p) return 0;
+    return strtoll(p + 8, NULL, 10);
 }

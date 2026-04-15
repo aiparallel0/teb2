@@ -58,6 +58,7 @@ TaskResult store_task(Db *db, TaskQuery q)
         "INSERT INTO tasks(goal_id,user_id,title,description,agent)"
         " VALUES(?,?,?,?,?)"
         " RETURNING id,goal_id,user_id,title,description,status,agent,created_at;";
+    char buf[768];
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
@@ -76,6 +77,10 @@ TaskResult store_task(Db *db, TaskQuery q)
         r.err = ERR_DB;
     }
     sqlite3_finalize(stmt);
+    if (r.err == ERR_OK) {
+        snprintf(buf, sizeof(buf), "%s %s", r.rows[0].title, r.rows[0].description);
+        { Err ie = index_entity(db, "task", r.rows[0].id, buf); (void)ie; }
+    }
     return r;
 }
 
@@ -84,7 +89,7 @@ TaskResult list_tasks(Db *db, TaskQuery q)
     TaskResult r;
     sqlite3_stmt *stmt = NULL;
     const char *sql = "SELECT id,goal_id,user_id,title,description,status,agent,created_at"
-                      " FROM tasks WHERE goal_id=? LIMIT ?;";
+                      " FROM tasks WHERE goal_id=? AND id > ? ORDER BY id ASC LIMIT ?;";
     int lim;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
@@ -93,7 +98,8 @@ TaskResult list_tasks(Db *db, TaskQuery q)
         r.err = ERR_DB; return r;
     }
     sqlite3_bind_int64(stmt, 1, q.goal_id);
-    sqlite3_bind_int(stmt,   2, lim);
+    sqlite3_bind_int64(stmt, 2, q.cursor);
+    sqlite3_bind_int(stmt,   3, lim);
     while (sqlite3_step(stmt) == SQLITE_ROW && r.count < 16)
         r.rows[r.count++] = row_to_task(stmt);
     r.err = ERR_OK;
