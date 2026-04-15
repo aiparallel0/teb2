@@ -1,0 +1,77 @@
+#define _POSIX_C_SOURCE 200809L
+#include <string.h>
+#include <stdio.h>
+#include <sqlite3.h>
+#include "core/types.h"
+#include "core/errors.h"
+#include "db/db.h"
+
+static Nudge row_to_nudge(sqlite3_stmt *stmt)
+{
+    Nudge n;
+    const char *s;
+    memset(&n, 0, sizeof(n));
+    n.id         = sqlite3_column_int64(stmt, 0);
+    s            = (const char *)sqlite3_column_text(stmt, 1);
+    if (s) snprintf(n.user_id, sizeof(n.user_id), "%s", s);
+    s            = (const char *)sqlite3_column_text(stmt, 2);
+    if (s) snprintf(n.message, sizeof(n.message), "%s", s);
+    n.created_at = sqlite3_column_int64(stmt, 3);
+    return n;
+}
+
+NudgeResult store_nudge(Db *db, NudgeQuery q)
+{
+    NudgeResult r;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "INSERT INTO nudges(user_id,message) VALUES(?,?)"
+                      " RETURNING id;";
+    memset(&r, 0, sizeof(r));
+    if (!db || !db->handle) { r.err = ERR_DB; return r; }
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        r.err = ERR_DB; return r;
+    }
+    sqlite3_bind_text(stmt, 1, q.user_id, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, q.message[0] ? q.message : "", -1,
+                      SQLITE_STATIC);
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        r.nudge.id = sqlite3_column_int64(stmt, 0);
+        snprintf(r.nudge.user_id, sizeof(r.nudge.user_id), "%s", q.user_id);
+        snprintf(r.nudge.message, sizeof(r.nudge.message), "%s", q.message);
+        r.err = ERR_OK;
+    } else {
+        r.err = ERR_DB;
+    }
+    sqlite3_finalize(stmt);
+    return r;
+}
+
+NudgeResult fetch_nudge(Db *db, NudgeQuery q)
+{
+    NudgeResult r;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql;
+    memset(&r, 0, sizeof(r));
+    if (!db || !db->handle) { r.err = ERR_DB; return r; }
+    if (q.id > 0) {
+        sql = "SELECT id,user_id,message,created_at FROM nudges"
+              " WHERE id=? LIMIT 1;";
+        if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK)
+        { r.err = ERR_DB; return r; }
+        sqlite3_bind_int64(stmt, 1, q.id);
+    } else {
+        sql = "SELECT id,user_id,message,created_at FROM nudges"
+              " WHERE user_id=? ORDER BY created_at DESC LIMIT 1;";
+        if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK)
+        { r.err = ERR_DB; return r; }
+        sqlite3_bind_text(stmt, 1, q.user_id, -1, SQLITE_STATIC);
+    }
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        r.nudge = row_to_nudge(stmt);
+        r.err   = ERR_OK;
+    } else {
+        r.err = ERR_NOT_FOUND;
+    }
+    sqlite3_finalize(stmt);
+    return r;
+}

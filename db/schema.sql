@@ -48,3 +48,11 @@ CREATE TABLE IF NOT EXISTS outcomes (
     result     TEXT    NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 );
+
+CREATE TABLE IF NOT EXISTS learnings (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    goal_id    INTEGER NOT NULL,
+    insight    TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+    FOREIGN KEY (goal_id) REFERENCES goals(id)
+);

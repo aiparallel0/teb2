@@ -4,12 +4,6 @@
 #include "core/errors.h"
 #include "agents/channel.h"
 
-/* Forward declarations for sub-agent entry points */
-AgentMsg finance_handle(AgentMsg msg);
-AgentMsg outreach_handle(AgentMsg msg);
-AgentMsg research_handle(AgentMsg msg);
-AgentMsg measure_handle(AgentMsg msg);
-
 static AgentMsg decompose_goal(AgentMsg msg)
 {
     AgentMsg out;
@@ -49,12 +43,14 @@ AgentMsg coord_handle(AgentMsg msg)
 {
     switch (msg.tag) {
     case MSG_GOAL_NEW:    return decompose_goal(msg);
+    case MSG_CLARIFY:     return clarify_handle(msg);
     case MSG_TASK_DONE:   return next_task(msg);
     case MSG_EXEC_REQ:    return research_handle(msg);
     case MSG_FINANCE_REQ: return finance_handle(msg);
     case MSG_NUDGE:       return outreach_handle(msg);
     case MSG_CHECKIN:     return next_task(msg);
     case MSG_MEASURE:     return measure_handle(msg);
+    case MSG_LEARN:       return learn_handle(msg);
     case MSG_RESULT:      return msg;
     default:              return unknown_msg(msg);
     }

@@ -6,24 +6,6 @@
 #include "core/errors.h"
 #include "db/db.h"
 
-static const char *SCHEMA_TASKS =
-    "CREATE TABLE IF NOT EXISTS tasks("
-    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-    "goal_id INTEGER NOT NULL,"
-    "user_id TEXT NOT NULL,"
-    "title TEXT NOT NULL,"
-    "description TEXT NOT NULL DEFAULT '',"
-    "status TEXT NOT NULL DEFAULT 'pending',"
-    "agent TEXT NOT NULL DEFAULT '',"
-    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));";
-
-static void ensure_tasks_schema(struct sqlite3 *h)
-{
-    char *err = NULL;
-    (void)sqlite3_exec(h, SCHEMA_TASKS, NULL, NULL, &err);
-    sqlite3_free(err);
-}
-
 static Task row_to_task(sqlite3_stmt *stmt)
 {
     Task t;
@@ -53,7 +35,6 @@ TaskResult fetch_task(Db *db, TaskQuery q)
                       " FROM tasks WHERE id=? LIMIT 1;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_tasks_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }
@@ -77,7 +58,6 @@ TaskResult store_task(Db *db, TaskQuery q)
                       " RETURNING id;";
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_tasks_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }
@@ -106,7 +86,6 @@ TaskResult list_tasks(Db *db, TaskQuery q)
     int lim;
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
-    ensure_tasks_schema(db->handle);
     lim = (q.limit > 0 && q.limit <= 16) ? q.limit : 16;
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
@@ -129,7 +108,6 @@ TaskResult update_task(Db *db, TaskQuery q)
     memset(&r, 0, sizeof(r));
     if (!db || !db->handle) { r.err = ERR_DB; return r; }
     if (q.id <= 0) { r.err = ERR_NOT_FOUND; return r; }
-    ensure_tasks_schema(db->handle);
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
         r.err = ERR_DB; return r;
     }

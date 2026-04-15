@@ -12,6 +12,10 @@ typedef enum {
     PERM_GOAL_WRITE,
     PERM_TASK_READ,
     PERM_TASK_WRITE,
+    PERM_NUDGE_READ,
+    PERM_NUDGE_WRITE,
+    PERM_LEARN_READ,
+    PERM_LEARN_WRITE,
     PERM_ADMIN
 } Permission;
 
@@ -126,5 +130,30 @@ struct sqlite3; /* forward declaration; completed by <sqlite3.h> in db/ files */
 typedef struct { struct sqlite3 *handle; } Db;
 
 typedef struct { Db *db; Config *cfg; UserClaims *user; } Ctx;
+
+
+typedef struct {
+    int64_t id;
+    char    user_id[64];
+    char    message[512];
+    int64_t created_at;
+} Nudge;
+
+typedef struct {
+    int64_t id; char user_id[64]; char message[512]; int limit;
+} NudgeQuery;
+typedef struct { Err err; Nudge nudge; } NudgeResult;
+
+typedef struct {
+    int64_t id;
+    int64_t goal_id;
+    char    insight[512];
+    int64_t created_at;
+} Learning;
+
+typedef struct {
+    int64_t id; int64_t goal_id; char insight[512]; int limit;
+} LearnQuery;
+typedef struct { Err err; Learning learning; } LearnResult;
 
 #endif /* TYPES_H */
