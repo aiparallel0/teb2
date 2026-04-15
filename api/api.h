@@ -3,7 +3,7 @@
 
 #include "core/types.h"
 
-/* api/server.c — HTTP parsing and response writing */
+/* api/server.c */
 HttpReq  parse_request(const char *raw, size_t len);
 HttpResp dispatch(HttpReq req, Ctx *ctx);
 void     write_response(int fd, HttpResp resp);
@@ -55,5 +55,42 @@ HttpResp handle_refresh(HttpReq req, Ctx *ctx);
 
 TokenResult authenticate_request(HttpReq req, const char *secret)
     __attribute__((warn_unused_result));
+
+/* api/collab.c */
+HttpResp handle_ws_create(HttpReq req, Ctx *ctx);
+HttpResp handle_ws_get(HttpReq req, Ctx *ctx);
+HttpResp handle_collab_add(HttpReq req, Ctx *ctx);
+HttpResp handle_collab_list(HttpReq req, Ctx *ctx);
+HttpResp handle_chat_send(HttpReq req, Ctx *ctx);
+HttpResp handle_chat_list(HttpReq req, Ctx *ctx);
+
+/* api/integrations.c */
+HttpResp handle_integ_toggle(HttpReq req, Ctx *ctx);
+HttpResp handle_integ_get(HttpReq req, Ctx *ctx);
+HttpResp handle_webhook_route(HttpReq req, Ctx *ctx);
+
+/* api/enterprise.c */
+HttpResp handle_org_create(HttpReq req, Ctx *ctx);
+HttpResp handle_org_get(HttpReq req, Ctx *ctx);
+HttpResp handle_sso_validate(HttpReq req, Ctx *ctx);
+HttpResp handle_ip_check(HttpReq req, Ctx *ctx);
+
+/* api/analytics.c */
+HttpResp handle_snap_store(HttpReq req, Ctx *ctx);
+HttpResp handle_roi_get(HttpReq req, Ctx *ctx);
+HttpResp handle_time_store(HttpReq req, Ctx *ctx);
+
+/* api/gamification.c */
+HttpResp handle_xp_credit(HttpReq req, Ctx *ctx);
+HttpResp handle_streak_get(HttpReq req, Ctx *ctx);
+HttpResp handle_leaderboard(HttpReq req, Ctx *ctx);
+
+/* api/community.c */
+HttpResp handle_blog_store(HttpReq req, Ctx *ctx);
+HttpResp handle_blog_get(HttpReq req, Ctx *ctx);
+HttpResp handle_vote_upsert(HttpReq req, Ctx *ctx);
+
+/* api/routes.c */
+HttpResp dispatch_ext(HttpReq req, Ctx *ctx);
 
 #endif /* API_H */
