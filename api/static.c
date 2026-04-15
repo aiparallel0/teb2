@@ -6,7 +6,6 @@
 #include "core/types.h"
 #include "api/api.h"
 
-/* serve_file — read a file into HttpResp with given content type */
 static HttpResp serve_file(const char *path, const char *ctype)
 {
     HttpResp resp;
@@ -43,4 +42,40 @@ HttpResp handle_ui_appjs(HttpReq req, Ctx *ctx)
 {
     (void)req; (void)ctx;
     return serve_file("ui/app.js", "application/javascript");
+}
+
+HttpResp handle_ui_style(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/style.css", "text/css");
+}
+
+HttpResp handle_ui_goalsjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/goals.js", "application/javascript");
+}
+
+HttpResp handle_ui_tasksjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/tasks.js", "application/javascript");
+}
+
+HttpResp handle_ui_financejs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/finance.js", "application/javascript");
+}
+
+HttpResp handle_ui_collabjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/collab.js", "application/javascript");
+}
+
+HttpResp handle_ui_dashjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/dash.js", "application/javascript");
 }

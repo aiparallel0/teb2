@@ -68,7 +68,7 @@ typedef struct { Err err; Bytes data; } CipherResult;
 typedef struct {
     char   method[8];
     char   path[256];
-    char   body[4096];
+    char   body[8192];
     size_t body_len;
     char   auth_header[256];
     int    fd;
@@ -77,7 +77,7 @@ typedef struct {
 
 typedef struct {
     int    status;
-    char   body[4096];
+    char   body[8192];
     size_t body_len;
     char   content_type[64];
 } HttpResp;
