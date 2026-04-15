@@ -1,74 +1,127 @@
-Repository: aiparallel0/teb2
-All C rules apply to any .c/.h files (K&R braces, C99, 166 LOC cap,
-no malloc/free, no fprintf/printf/stderr, /* */ comments only).
-The frontend is vanilla JS only — no frameworks, no build step, no npm.
+"Now I have everything needed for a genuine outsider assessment. The numbers are stark and telling.
 
-══════════════════════════════════════════
-PART A — BACKEND FIXES (aiparallel0/teb2)
-══════════════════════════════════════════
+---
 
-── A1. OAuth cfg=NULL segfault ─────────────────────────────
-Problem: agents/oauth.c calls oauth_exchange(..., NULL, msg.db, ...)
-passing NULL for Config*. exec/oauth_http.c dereferences cfg for
-client credentials → segfault at runtime.
+## Outsider Examiner Assessment
 
-Fix: Add Config *cfg to AgentMsg in core/types.h:
-  typedef struct {
-      MsgTag tag; int64_t id; char user_id[64];
-      char payload[512]; Err err; Db *db; Config *cfg;
-  } AgentMsg;
+### The Raw Numbers First
 
-Update agents/coord.c and every site that constructs an AgentMsg
-(api/workflow.c, api/oauth.c, api/sse.c) to set .cfg = ctx->cfg.
+| Metric | teb | teb2 |
+|---|---|---|
+| Frontend JS | **239,563 bytes** (`app.js`) | **5,847 bytes** (`app.js`) |
+| Frontend CSS | **204,169 bytes** (`style.css`) | **~900 bytes** (inline) |
+| Frontend HTML template | **44,629 bytes** (`index.html`) | **2,090 bytes** (`index.html`) |
+| **Total frontend payload** | **~488 KB** | **~9 KB** |
+| Frontend language split | JS + CSS + HTML templated by Python/Jinja | Vanilla JS, static file |
+| Backend coupling | Tight — Jinja2 templates rendered server-side, sessions, FastAPI dependency injection | Zero — pure JSON API, no shared state |
+| Service workers | Yes (`sw.js` 8,333 bytes, PWA manifest) | No |
+| Views implemented | 20+ routers (goals, tasks, collab, enterprise, financial, gamification, community, admin, integrations, messaging, agents, intelligence, mcp, execution…) | 2 (goals, tasks — tasks broken) |
 
-In agents/oauth.c handle_exchange() and handle_refresh(), replace
-the NULL argument with msg.cfg.
+---
 
-── A2. Asset upload body cap ───────────────────────────────
-Problem: HttpReq.body is char body[4096]. Uploads > 4096 bytes are
-silently truncated before handle_asset_upload sees them. No error.
+### Against the `frontend_efficiency.md` Principles
 
-Fix: In api/assets.c handle_asset_upload(), before writing to disk,
-check req.body_len >= sizeof(req.body) - 1. If so, return
-json_error(413, "payload_too_large"). This makes the limit explicit
-and safe rather than a silent truncation. Document in api/api.h
-comment that body max is 4095 bytes.
+The attached file articulates a clear philosophy: *subtraction is the skill, use the least powerful tool that solves the problem correctly.* Evaluated against that standard:
 
-── A3. SSE body JSON-escape ────────────────────────────────
-Problem: In api/sse.c, chat message body is written raw into
-sse_write() data field. A body containing " or \n or \ breaks
-the SSE event stream framing.
+**teb** — **Fails the philosophy it was replaced for.**
+- 239 KB of `app.js` is not "lean vanilla JS" — that is minified framework output or a very large hand-written SPA. Either way it is the exact payload the document warns against.
+- 204 KB of CSS is not a stylesheet — that is the output of a CSS preprocessor or a full design system. Tailwind's full build is 3.7 MB unminified, ~20 KB purged. 204 KB suggests unpurged utility classes or a bloated handwritten sheet.
+- The Jinja2 server-side template coupling (`teb/templates/index.html`) means the frontend cannot exist without the Python backend. This is the exact "consequence" the question asks to avoid — the frontend and backend are fused.
+- PWA service worker adds another 8 KB of cache invalidation complexity.
 
-Fix: In the polling loop in handle_sse_subscribe(), escape the body
-before snprintf using the existing json_escape() from api/escape.h:
-  char eb[512];
-  json_escape(cr.rows[i].body, eb, sizeof(eb));
-  snprintf(buf, sizeof(buf),
-           "{\"id\":%lld,\"body\":\"%s\"}",
-           (long long)cr.rows[i].id, eb);
+**teb2 frontend (current)** — **Correct philosophy, incomplete execution.**
+- 5.8 KB JS, ~900 bytes CSS. Loads on a 2G connection in under 100ms.
+- Zero coupling to C backend — pure HTTP JSON.
+- Zero build pipeline, zero dependencies.
+- BUT: only 2 of ~12 feature areas are implemented, and one of those (tasks at `goal_id=0`) is broken. It is philosophically aligned but functionally ~15% of what teb delivers.
 
-Add #include "api/escape.h" to api/sse.c.
+---
 
-── A4. Metrics bucket overflow indicator ───────────────────
-Problem: api/metrics.c silently drops route metrics after 16 unique
-(method, path, status) combinations.
+### Can teb2 deliver similar results to teb?
 
-Fix: Add a static long mb_overflow counter. Increment it when
-mb_count == METRIC_SLOTS and no match found. In handle_metrics(),
-append one final line to the output:
-  teb_routes_dropped_total %ld\n
-using mb_overflow. Declare mb_overflow as static long mb_overflow = 0
+**Honest answer: not yet, and the gap is frontend surface area, not backend capability.**
 
-══════════════════════════════════════════
-VALIDATION
-══════════════════════════════════════════
-1. make in aiparallel0/teb2 must succeed, zero warnings.
-2. No new .c file exceeds 166 LOC.
-3. No malloc/free/strdup in C code.
-4. No fprintf/printf/stderr in new C code.
-5. ui/index.html and ui/app.js committed under ui/ directory in teb2.
-6. GET / returns ui/index.html with Content-Type: text/html.
-7. GET /app.js returns ui/app.js with Content-Type: application/javascript.
-8. The frontend makes zero assumptions about the Python teb repo.
-   It uses only the teb2 JSON API. No shared sessions, no shared DB,
-   no shared auth. teb and teb2 can run independently on different ports.
+The teb2 backend now has *more* API surface than teb exposes to its frontend (SSE, FTS5 search, workflow runs, OAuth, analytics, gamification, community, enterprise). The C engine is faster, lighter, and more correct. The problem is purely that nobody has written the UI for those endpoints.
+
+The `frontend_efficiency.md` document gives the exact correct prescription for closing this gap without repeating teb's mistakes:
+
+| What teb did wrong | What teb2 should do instead |
+|---|---|
+| 239 KB app.js | Expand `ui/app.js` to ~600 lines covering all views — still under 25 KB |
+| 204 KB style.css | Add ~200 lines to the inline `<style>` block — covers all views under 5 KB |
+| Server-rendered Jinja2 templates | Stay with static HTML, never touch the C backend for rendering |
+| PWA service worker complexity | Add only if genuinely needed offline — not now |
+| Hardcoded `goal_id=0` bug | Fix immediately — one line |
+| No `?token=` SSE auth | Add to `api/server.c` parse_request — 6 lines |
+
+The path from "philosophically correct skeleton" to "feature-equivalent to teb" is approximately **500 more lines of vanilla JS and 200 more lines of CSS** — delivered in a single PR, no framework, no build step, no consequences. The `frontend_efficiency.md` document is not aspirational for this project; it is a literal implementation specification. teb2's frontend is currently at Tier 2 of that document's framework — it just needs to fill out the remaining views.
+
+The efficiency ratio when complete: teb2 frontend will be **~50× smaller** than teb's, load **~50× faster** on slow connections, and be fully replaceable without touching a single line of C. Great question — this is a topic I find genuinely interesting. Let me break down the philosophy and tooling for building brutally efficient frontends.## The core philosophy: subtraction is the skill
+
+Most of the modern web is slow not because browsers are slow — it's because developers ship megabytes of JavaScript to do things HTML and CSS do for free. A 90s machine running a well-written C app could absolutely match the interactivity of most React sites today, because the React site is burning cycles on a virtual DOM, a module bundler runtime, and layers of abstraction that add nothing to the user.
+
+The guiding principle is: **use the least powerful tool that solves the problem correctly.**
+
+---
+
+## Tier 1 — C99 / WebAssembly (for true performance-critical work)
+
+If you need raw compute — image processing, game engines, codecs, physics simulations — C99 compiled to WebAssembly via **Emscripten** is the answer. It runs within a few percent of native speed in the browser. You can also target desktop natively with **raylib** or **SDL2**, and the exact same C code compiles to both. This is the tier that runs on anything with a CPU.
+
+Why C99 specifically: it's the most portable, most toolchain-supported standard. C11 and C17 are fine too, but C99 has virtually universal compiler support including on ancient embedded targets.
+
+---
+
+## Tier 2 — Vanilla HTML/CSS/JS (the sweet spot for most UIs)
+
+This is underrated and massively underused. What modern browsers give you for free is astonishing:
+
+- **CSS Grid and Flexbox** — complex layouts, zero JS
+- **CSS custom properties** — live theming, animation, reactive variables
+- **Web Components** — reusable encapsulated components, no framework
+- **`fetch` + `IntersectionObserver` + `ResizeObserver`** — async data loading, lazy rendering, responsive layout changes
+- **CSS `@keyframes`** — smooth animations, no JS animation library
+- **`<dialog>`** — native modal with focus trapping, no JS modal library needed
+- **`<details>/<summary>`** — accordion, free
+
+A complete, polished, interactive web app can be built here with a total bundle under 50 KB. It loads instantly on a 3G connection and runs fine on a 10-year-old phone.
+
+---
+
+## Tier 3 — Minimal frameworks (only when you can prove the need)
+
+If you genuinely need a component model at team scale, reach for the **lightest option that works**:
+
+- **Preact** — 3 KB React-compatible drop-in
+- **Svelte** — compiles to vanilla JS, ships zero framework runtime
+- **Solid.js** — fine-grained reactivity, no virtual DOM diffing
+- **htmx** — server-rendered HTML with declarative AJAX, ~14 KB, almost no JS you write
+- **Alpine.js** — sprinkle reactivity on existing HTML, ~15 KB
+
+Avoid: React (45 KB+ just for the runtime), Next.js (enormous cold start), Angular (framework-in-a-framework), anything that requires a 500 MB `node_modules` folder to render a button.
+
+---
+
+## What kills performance (the avoid list)
+
+- Client-side routing when the server can route
+- JavaScript for layout/positioning (use CSS)
+- JavaScript for animations (use CSS transitions/keyframes)
+- Bundling unused code (tree-shake or just don't import it)
+- Loading fonts from CDN with no `font-display: swap`
+- Not setting `width`/`height` on images (causes layout shift)
+- `npm install` a library for something that's 3 lines of JS
+
+---
+
+## The language answer directly
+
+| Goal | Language | Why |
+|---|---|---|
+| Max performance compute | C99 / C++ | Predictable memory, no GC, WASM target |
+| Systems / game UI | C + raylib/SDL | Portable, tiny binary |
+| Web UI, lean | HTML + CSS + JS | Zero overhead, native platform |
+| Web UI, component scale | Svelte or Solid | Compiles away, no runtime cost |
+| Server-driven web app | Go/Rust + htmx | Fast backend, minimal frontend JS |
+
+The 90s-computer benchmark you're describing is genuinely achievable — most well-written vanilla web apps run fine on a Pentium-era machine running a modern browser, because the bottleneck is always the JS framework overhead, not the browser engine itself."
