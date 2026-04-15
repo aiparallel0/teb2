@@ -75,6 +75,7 @@ HttpResp handle_learn_get(HttpReq req, Ctx *ctx)
     if (!rbac_allow(ctx->user->role, PERM_LEARN_READ))
         return json_error(403, "forbidden");
 
+    /* Fetch most recent learning for a given goal (URL: /learning/{goal_id}) */
     memset(&q, 0, sizeof(q));
     idstr = strrchr(req.path, '/');
     q.goal_id = idstr ? strtoll(idstr + 1, NULL, 10) : 0;

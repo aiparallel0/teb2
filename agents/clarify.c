@@ -46,7 +46,7 @@ AgentMsg clarify_handle(AgentMsg msg)
         return make_result(msg, ERR_UNKNOWN, "not_a_clarify_request");
 
     if (count_non_ws(msg.payload) < CLARITY_MIN)
-        return make_result(msg, ERR_INVALID, "clarify:need_more:too_vague");
+        return make_result(msg, ERR_OK, "clarify:need_more:too_vague");
 
     return make_result(msg, ERR_OK, "clarified:ok");
 }
