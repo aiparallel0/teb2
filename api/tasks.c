@@ -42,11 +42,10 @@ HttpResp handle_task_update(HttpReq req, Ctx *ctx)
     q.id  = idstr ? (int64_t)strtoll(idstr + 1, NULL, 10) : 0;
     if (q.id <= 0) return json_error(400, "bad_id");
 
-    tr = fetch_task(ctx->db, q);
+    tr = update_task(ctx->db, q);
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
 
-    (void)req;
     return json_ok("{\"status\":\"updated\"}");
 }
 
@@ -64,12 +63,12 @@ HttpResp handle_task_execute(HttpReq req, Ctx *ctx)
     idstr = strrchr(req.path, '/');
     q.id  = idstr ? (int64_t)strtoll(idstr + 1, NULL, 10) : 0;
     if (q.id <= 0) return json_error(400, "bad_id");
+    snprintf(q.status, sizeof(q.status), "%s", "executing");
 
-    tr = fetch_task(ctx->db, q);
+    tr = update_task(ctx->db, q);
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
 
-    (void)req;
     return json_ok("{\"status\":\"executing\"}");
 }
 

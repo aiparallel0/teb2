@@ -10,6 +10,7 @@ typedef enum {
     MSG_FINANCE_REQ,
     MSG_NUDGE,
     MSG_CHECKIN,
+    MSG_MEASURE,
     MSG_RESULT
 } MsgTag;
 
