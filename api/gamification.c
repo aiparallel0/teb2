@@ -61,7 +61,7 @@ HttpResp handle_leaderboard(HttpReq req, Ctx *ctx)
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     memset(&q, 0, sizeof(q));
     q.limit = 10;
-    q.cursor = extract_cursor(req.path);
+    q.cursor = extract_cursor(req.query);
     r = list_xp(ctx->db, q);
     if (r.err == ERR_NOT_FOUND)
         return json_ok("{\"next_cursor\":0,\"top\":[]}");

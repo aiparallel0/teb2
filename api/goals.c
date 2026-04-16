@@ -67,7 +67,7 @@ HttpResp handle_goal_list(HttpReq req, Ctx *ctx)
     snprintf(q.user_id, sizeof(q.user_id), "%lld",
              (long long)ctx->user->user_id);
     q.limit = 16;
-    q.cursor = extract_cursor(req.path);
+    q.cursor = extract_cursor(req.query);
     gr = list_goals(ctx->db, q);
     if (gr.err != ERR_OK) return json_error(500, "db_error");
     next_cursor = (gr.count > 0) ? gr.rows[gr.count - 1].id : 0;

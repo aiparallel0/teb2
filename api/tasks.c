@@ -112,7 +112,7 @@ HttpResp handle_task_list(HttpReq req, Ctx *ctx)
     q.goal_id = gidstr ? strtoll(gidstr + 1, NULL, 10) : 0;
     if (q.goal_id <= 0) return json_error(400, "bad_goal_id");
     q.limit = 16;
-    q.cursor = extract_cursor(req.path);
+    q.cursor = extract_cursor(req.query);
     tr = list_tasks(ctx->db, q);
     if (tr.err != ERR_OK) return json_error(500, "db_error");
     next_cursor = (tr.count > 0) ? tr.rows[tr.count - 1].id : 0;

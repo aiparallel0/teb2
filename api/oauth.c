@@ -41,9 +41,10 @@ HttpResp handle_oauth_redirect(HttpReq req, Ctx *ctx)
              (int)strcspn(seg, "?/ "), seg);
     if (!prov[0]) return json_error(400, "missing_provider");
     memset(ruri, 0, sizeof(ruri));
-    qp = strstr(req.path, "redirect_uri=");
-    if (qp) snprintf(ruri, sizeof(ruri), "%.*s",
-                      (int)strcspn(qp + 13, "& "), qp + 13);
+    qp = strstr(req.query, "redirect_uri=");
+    if (qp && (qp == req.query || qp[-1] == '&'))
+        snprintf(ruri, sizeof(ruri), "%.*s",
+                 (int)strcspn(qp + 13, "& "), qp + 13);
     memset(&msg, 0, sizeof(msg));
     msg.tag = MSG_OAUTH;
     msg.db  = ctx->db;

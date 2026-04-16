@@ -39,10 +39,10 @@ HttpResp handle_asset_upload(HttpReq req, Ctx *ctx)
     memset(&q, 0, sizeof(q));
     snprintf(uid, sizeof(uid), "%lld", (long long)ctx->user->user_id);
     snprintf(q.user_id, sizeof(q.user_id), "%s", uid);
-    fnp = strstr(req.path, "filename=");
-    if (fnp) {
+    fnp = strstr(req.query, "filename=");
+    if (fnp && (fnp == req.query || fnp[-1] == '&')) {
         fnp += 9;
-        snprintf(fn, sizeof(fn), "%.*s", (int)strcspn(fnp, "&? "), fnp);
+        snprintf(fn, sizeof(fn), "%.*s", (int)strcspn(fnp, "& "), fnp);
     } else {
         snprintf(fn, sizeof(fn), "upload");
     }

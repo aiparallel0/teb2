@@ -69,6 +69,7 @@ typedef struct { Err err; Bytes data; } CipherResult;
 typedef struct {
     char   method[8];
     char   path[256];
+    char   query[256];
     char   body[8192];
     size_t body_len;
     char   auth_header[256];
