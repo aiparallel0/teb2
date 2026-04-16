@@ -11,14 +11,24 @@
 #include "api/json.h"
 #include "api/escape.h"
 
-static void extract_param(const char *path, const char *key,
+static void extract_param(const char *query, const char *key,
                           char *out, size_t outsz)
 {
-    const char *p = strstr(path, key);
-    size_t klen;
-    if (!p) { out[0] = '\0'; return; }
-    klen = strlen(key);
-    p += klen;
+    const char *p;
+    size_t klen = strlen(key);
+    out[0] = '\0';
+    if (!query || !*query) return;
+    if (strncmp(query, key, klen) == 0) {
+        p = query + klen;
+    } else {
+        char buf[64];
+        if (klen + 2 > sizeof(buf)) return;
+        buf[0] = '&';
+        memcpy(buf + 1, key, klen + 1);
+        p = strstr(query, buf);
+        if (!p) return;
+        p += 1 + klen;
+    }
     snprintf(out, outsz, "%.*s", (int)strcspn(p, "& "), p);
 }
 
@@ -33,9 +43,9 @@ HttpResp handle_search(HttpReq req, Ctx *ctx)
     if (!rbac_allow(ctx->user->role, PERM_GOAL_READ))
         return json_error(403, "forbidden");
     memset(&q, 0, sizeof(q));
-    extract_param(req.path, "q=", raw_q, sizeof(raw_q));
-    extract_param(req.path, "entity=", q.entity, sizeof(q.entity));
-    extract_param(req.path, "limit=", lim, sizeof(lim));
+    extract_param(req.query, "q=", raw_q, sizeof(raw_q));
+    extract_param(req.query, "entity=", q.entity, sizeof(q.entity));
+    extract_param(req.query, "limit=", lim, sizeof(lim));
     if (lim[0]) q.limit = (int)strtol(lim, NULL, 10);
     if (!raw_q[0]) return json_error(400, "missing_q");
     snprintf(q.query, sizeof(q.query), "%s", raw_q);

@@ -31,6 +31,7 @@ HttpReq parse_request(const char *raw, size_t len)
             if (tk && !req.auth_header[0])
                 snprintf(req.auth_header, sizeof(req.auth_header),
                          "Bearer %s", tk + 6);
+            snprintf(req.query, sizeof(req.query), "%s", qm + 1);
             *qm = '\0';
         }
     }

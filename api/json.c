@@ -43,12 +43,14 @@ int extract_json_str(const char *body, const char *key,
     return i > 0 ? 1 : 0;
 }
 
-int64_t extract_cursor(const char *path)
+int64_t extract_cursor(const char *query)
 {
     const char *p;
 
-    p = strstr(path, "?cursor=");
-    if (!p) p = strstr(path, "&cursor=");
+    if (!query || !*query) return 0;
+    if (strncmp(query, "cursor=", 7) == 0)
+        return strtoll(query + 7, NULL, 10);
+    p = strstr(query, "&cursor=");
     if (!p) return 0;
     return strtoll(p + 8, NULL, 10);
 }

@@ -79,7 +79,7 @@ HttpResp handle_collab_list(HttpReq req, Ctx *ctx)
     memset(&q, 0, sizeof(q));
     q.ws_id = strtoll(req.path + 9, NULL, 10);
     q.limit = 16;
-    q.cursor = extract_cursor(req.path);
+    q.cursor = extract_cursor(req.query);
     r = list_collabs(ctx->db, q);
     if (r.err != ERR_OK) return json_error(500, "db_error");
     next_cursor = (r.count > 0) ? r.rows[r.count - 1].id : 0;
@@ -126,7 +126,7 @@ HttpResp handle_chat_list(HttpReq req, Ctx *ctx)
     memset(&q, 0, sizeof(q));
     q.ws_id = strtoll(req.path + 6, NULL, 10);
     q.limit = 16;
-    q.cursor = extract_cursor(req.path);
+    q.cursor = extract_cursor(req.query);
     r = list_chats(ctx->db, q);
     if (r.err != ERR_OK) return json_error(500, "db_error");
     next_cursor = (r.count > 0) ? r.rows[r.count - 1].id : 0;

@@ -7,6 +7,6 @@ HttpResp json_error(int status, const char *msg);
 HttpResp json_ok(const char *body);
 int extract_json_str(const char *body, const char *key,
                      char *out, size_t outsz);
-int64_t extract_cursor(const char *path);
+int64_t extract_cursor(const char *query);
 
 #endif /* API_JSON_H */
