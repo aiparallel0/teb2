@@ -1,12 +1,25 @@
 # teb2
 
-teb2: C99 goal-to-execution bridge for AI agent orchestration, financial pipelines, and browser automation.
+teb2: C99 goal-to-execution bridge for AI agent orchestration. The
+server takes a natural-language goal, asks a clarification agent to
+sharpen it, decomposes it into a dependency graph of tasks, persists
+each task and its DAG / HITL metadata, and dispatches tasks to the
+registered agent handlers.
+
+> **Status: alpha / developer preview.** Several items advertised in
+> previous revisions of this README are still in progress. The single
+> source of truth for what is and is not shipped is
+> [`docs/FOLLOWUPS.md`](docs/FOLLOWUPS.md). Read it before relying on
+> any claim below.
 
 **Architecture contracts, strictly enforced by CI:**
-- 166-line cap per `.c` / `.h` file.
+- 166-line cap per `.c` / `.h` file (hard, no exemptions).
 - 2-in / 1-out function contracts.
 - Flat includes — no transitive dependency graph.
-- Zero runtime tests — the compiler + `-Werror -fanalyzer` are the test suite.
+- The compiler (`-Werror -fanalyzer -D_FORTIFY_SOURCE=2`) and the
+  `evals/run.sh` drift guard are the only automated gates today.
+  A behavioural test suite is on the roadmap
+  (see `docs/FOLLOWUPS.md`).
 
 ## The loop
 
@@ -73,7 +86,7 @@ Open `.env` in any text editor. It contains three variables:
 
 ```
 DB_PATH=teb2.db          # path (inside the container) where SQLite stores data
-SECRET=change_me_in_production   # secret key used for JWT signing — CHANGE THIS
+SECRET=change_me_in_production   # key used to HMAC-sign session tickets — CHANGE THIS
 PORT=8080                # internal port the C binary listens on
 ```
 
@@ -200,7 +213,11 @@ To put nginx in front of the native binary, copy `nginx/nginx.conf` into your ng
 | Change the external port | Set `LISTEN_PORT=8081` in `.env` before `docker compose up` |
 | Generate a secure `SECRET` | `openssl rand -hex 32` |
 
-> **Note on `SECRET`:** This value is used to sign and verify JWT tokens. Use a long, random string (≥ 32 bytes) in any non-development environment.
+> **Note on `SECRET`:** This value is used to HMAC-sign session
+> tickets (see `auth/token.c` — HMAC-SHA256 over the ticket fields,
+> not an RFC-7519 JWT). Use a long, random string (≥ 32 bytes) in any
+> non-development environment. JWT support is on the roadmap
+> (`docs/FOLLOWUPS.md`, Phase 7).
 
 ---
 
@@ -209,11 +226,12 @@ To put nginx in front of the native binary, copy `nginx/nginx.conf` into your ng
 ```
 api/        HTTP route handlers
 agents/     AI agent modules (coordinator, clarify, finance, …)
-auth/       Authentication & RBAC (JWT, bcrypt, roles)
+auth/       Authentication & RBAC (HMAC-signed tickets, bcrypt, roles)
 core/       Config, rate limit, shared types, llm, prompts, sanitize
 core/pd/    Auto-generated C arrays compiled from prompts/*.md
 db/         SQLite schema initialization & per-entity queries
-exec/       Browser automation, SMTP, vault, SSE helpers
+exec/       Outbound I/O helpers — HTTP, TLS, SMTP, SSE, vault,
+            plus a browser-driver stub (not yet wired; see FOLLOWUPS §E)
 prompts/    Versioned Markdown prompt sources
 docs/       Architecture + follow-up docs
 evals/      Smoke eval harness + mock LLM

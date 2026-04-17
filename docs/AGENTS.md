@@ -34,14 +34,19 @@ the feedback cycle the audit flagged as Gap 4.
 Every LLM call also gets `system/persona.md` + `system/guardrails.md`
 prepended automatically by `core/llm.c`.
 
-## Prompt catalog (53 total)
+## Prompt catalog (121 total)
 
 Prompts are grouped by namespace. Each file follows the 8-section
-structure mandated by `docs/PROMPTS.md`.
+structure mandated by `docs/PROMPTS.md`. The full, current index
+lives in [`docs/PROMPT_CATALOG.md`](PROMPT_CATALOG.md); the
+summary below only lists the core loop + the largest namespaces,
+because the catalog grew past what a hand-maintained table can
+stay honest about.
 
 - **System** (2): `system/persona`, `system/guardrails`.
 - **Loop** (7): `clarify`, `decompose`, `router`, `research`,
-  `browse`, `measure`, `learn`.
+  `browse` *(prompt only — no browser agent is wired yet,
+  see `docs/FOLLOWUPS.md` §E)*, `measure`, `learn`.
 - **Exec** (12): `exec.code`, `exec.code_review`, `exec.refactor`,
   `exec.write`, `exec.summarize`, `exec.extract`, `exec.classify`,
   `exec.sql`, `exec.translate`, `exec.rewrite`, `exec.sentiment`,
@@ -57,6 +62,10 @@ structure mandated by `docs/PROMPTS.md`.
 - **Meeting** (3): `meeting.agenda`, `meeting.notes`, `meeting.retro`.
 - **Doc** (2): `doc.qa`, `doc.outline`.
 - **Ops** (1): `triage.ticket`.
+
+Remaining ~78 prompts cover sales, marketing, support, product,
+ops/SRE, engineering, data/analytics, legal, HR and integration
+workflows. See `docs/PROMPT_CATALOG.md`.
 
 ## How `exec.*` is picked
 

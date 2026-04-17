@@ -13,6 +13,21 @@ vestige code was still wired up. We now prefer honest "partial" labels.
 
 Done in this PR:
 
+- **A0.** README feature list rewritten to match what actually runs;
+  "financial pipelines" and "browser automation" tag-line removed,
+  the `exec/` description demotes the browser driver to "stub (not
+  yet wired)". "JWT" renamed to "HMAC-signed ticket" everywhere it
+  described `auth/token.c`. README now carries an alpha/preview
+  banner pointing to this file as the single source of truth for
+  what is and is not shipped.
+- **A0b.** `docs/AGENTS.md` prompt-catalog header reconciled from
+  "53 total" to "121 total"; the `browse` loop entry now notes that
+  no browser agent is wired yet (see §E below).
+- **A0c.** `auth/token.c`: the legacy XOR-fold MAC fallback is
+  deleted. HMAC-SHA256 is the only code path; the `-DTEB2_MODERN`
+  define is removed from the Makefile because it no longer gates
+  anything. A misconfigured build can no longer silently ship a
+  non-cryptographic MAC.
 - **A1.** `agents/decompose.c` now extracts `depends_on`,
   `effort_minutes`, `est_cost_cents`, `requires_hitl`, and
   `success_criteria` from the model reply and persists them into a new

@@ -4,7 +4,6 @@ CFLAGS  = -std=c99 -pedantic -Wall -Wextra -Werror -Wshadow \
 	   -Wunused-function -fno-common -fanalyzer -O2 \
 	   -Wno-overlength-strings \
 	   -D_FORTIFY_SOURCE=2 -D_POSIX_C_SOURCE=200809L \
-	   -DTEB2_MODERN \
 	   -I.
 LDFLAGS = -lsqlite3 -lcrypt -lssl -lcrypto
 
