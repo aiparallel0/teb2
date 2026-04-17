@@ -34,7 +34,7 @@ the feedback cycle the audit flagged as Gap 4.
 Every LLM call also gets `system/persona.md` + `system/guardrails.md`
 prepended automatically by `core/llm.c`.
 
-## Prompt catalog (43 total)
+## Prompt catalog (53 total)
 
 Prompts are grouped by namespace. Each file follows the 8-section
 structure mandated by `docs/PROMPTS.md`.

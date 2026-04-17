@@ -34,6 +34,43 @@ done
 grep -q 'prompt_get' core/prompts.c || err "prompt_get not found in registry"
 grep -qE 'P_[A-Z_]+' core/prompts.c || err "no P_ symbols referenced"
 
+# 2b. Golden + red-team fixtures: every line must be valid JSON with a
+#     prompt name that the registry knows about. Cheap drift guard —
+#     can only catch shape errors, not semantic ones (Phase G real eval
+#     runner will do that), but it is enough to stop a PR from landing
+#     a fixture that references a prompt we deleted.
+validate_fixtures() {
+    dir=$1
+    [ -d "$dir" ] || return 0
+    for f in "$dir"/*.jsonl; do
+        [ -e "$f" ] || continue
+        python3 - "$f" <<'PY' || err "fixture validation failed for $f"
+import json, sys, re, pathlib
+f = pathlib.Path(sys.argv[1])
+reg = pathlib.Path("core/prompts.c").read_text()
+names = set(re.findall(r'\{\s*"([^"]+)"\s*,\s*P_', reg))
+bad = 0
+for i, line in enumerate(f.read_text().splitlines(), 1):
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        obj = json.loads(line)
+    except Exception as e:
+        print(f"{f}:{i}: invalid JSON: {e}", file=sys.stderr); bad += 1; continue
+    for k in ("name", "prompt", "expect"):
+        if k not in obj:
+            print(f"{f}:{i}: missing '{k}'", file=sys.stderr); bad += 1
+    p = obj.get("prompt")
+    if p and p not in names:
+        print(f"{f}:{i}: prompt '{p}' not in registry", file=sys.stderr); bad += 1
+sys.exit(1 if bad else 0)
+PY
+    done
+}
+validate_fixtures evals/golden
+validate_fixtures evals/redteam
+
 # 3. Build must be current
 if command -v make >/dev/null; then
     make -q || note "(info) teb2 build is stale; run 'make' before TEB2_RUN"

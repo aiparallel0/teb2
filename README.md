@@ -23,12 +23,12 @@ and [`docs/FOLLOWUPS.md`](docs/FOLLOWUPS.md) for work still outstanding.
 
 ## File inventory
 
-This is not a 23-file minimal kernel — that was the seed but the
-product grew. Accurate current counts:
+The "23-file minimal kernel" framing from the initial seed is dead —
+the product grew. Live counts (verified in CI by `evals/run.sh`):
 
-    find core agents api db auth exec -name '*.[ch]' | wc -l   # ~90 files
-    find prompts -name '*.md'                   | wc -l        # 43 prompts
-    find ui      -name '*.js'                   | wc -l        # ~12 scripts
+    find core agents api db auth exec -name '*.[ch]' | wc -l   # 150 files
+    find prompts -name '*.md'                        | wc -l   # 53 prompts
+    find ui      -name '*.js'                        | wc -l   # 10 scripts
 
 Every one still obeys the 166-line cap.
 

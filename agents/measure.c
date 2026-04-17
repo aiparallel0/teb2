@@ -29,8 +29,9 @@ AgentMsg measure_handle(AgentMsg msg)
     LlmReq    lreq; LlmReply lrep;
     SnapQuery sq;   SnapResult sr;
     int score = 0;
-    char buf[2048], safe[1024];
+    char buf[2048], safe[1024], next_action[16];
 
+    next_action[0] = '\0';
     if (msg.tag != MSG_MEASURE)
         return agent_make_result(msg, ERR_UNKNOWN, "not_a_measure_request");
     if (!payload_has_content(msg.payload))
@@ -47,6 +48,8 @@ AgentMsg measure_handle(AgentMsg msg)
         if (lrep.err == ERR_OK) {
             int s = extract_int_field(lrep.reply, "score_0_100");
             score = (s >= 0 && s <= 100) ? s : 0;
+            (void)json_str(lrep.reply, "next_action",
+                           next_action, sizeof(next_action));
             snprintf(buf, sizeof(buf), "%.2000s", lrep.reply);
         } else {
             score = 50;
@@ -65,6 +68,19 @@ AgentMsg measure_handle(AgentMsg msg)
         sq.goal_id = msg.id;
         sq.pct     = score;
         sr = store_snap(msg.db, sq); (void)sr;
+        /* A2: persist next_action + score onto the task_plan row
+         * so a run supervisor can branch on retry/escalate. msg.id
+         * at MSG_MEASURE is the task_id per the existing callers. */
+        if (next_action[0] || score > 0) {
+            TaskPlanQuery pq; TaskPlanResult pr;
+            memset(&pq, 0, sizeof(pq));
+            pq.task_id          = msg.id;
+            pq.plan.score_0_100 = score;
+            snprintf(pq.plan.next_action, sizeof(pq.plan.next_action),
+                     "%s", next_action);
+            pq.plan.attempts    = 1;
+            pr = store_task_plan(msg.db, pq); (void)pr;
+        }
     }
     return agent_make_result(msg, ERR_OK, buf);
 }

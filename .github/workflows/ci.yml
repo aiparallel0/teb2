@@ -31,3 +31,6 @@ jobs:
             fi
           done
           exit $fail
+
+      - name: Eval harness (schema / fixture drift)
+        run: bash evals/run.sh

@@ -116,4 +116,10 @@ Err audit_log(Db *db, const char *user_id, const char *action,
               const char *path, int status, const char *src_ip)
     __attribute__((warn_unused_result));
 
+/* task_plan — per-task DAG/HITL metadata extracted from decompose & measure */
+TaskPlanResult store_task_plan(Db *db, TaskPlanQuery q)
+    __attribute__((warn_unused_result));
+TaskPlanResult fetch_task_plan(Db *db, int64_t task_id)
+    __attribute__((warn_unused_result));
+
 #endif /* DB_H */

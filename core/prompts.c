@@ -55,6 +55,16 @@ static const struct entry TABLE[] = {
     { "doc.qa",            P_DOC_QA            },
     { "doc.outline",       P_DOC_OUTLINE       },
     { "triage.ticket",     P_TRIAGE_TICKET     },
+    { "persona.onboarding",  P_PERSONA_ONBOARDING  },
+    { "memory.compact",      P_MEMORY_COMPACT      },
+    { "learn.dedup",         P_LEARN_DEDUP         },
+    { "decompose.critic",    P_DECOMPOSE_CRITIC    },
+    { "measure.critic",      P_MEASURE_CRITIC      },
+    { "kb.qa",               P_KB_QA               },
+    { "planner.weekly",      P_PLANNER_WEEKLY      },
+    { "report.weekly",       P_REPORT_WEEKLY       },
+    { "outreach.escalation", P_OUTREACH_ESCALATION },
+    { "code.debug",          P_CODE_DEBUG          },
 };
 #define N_PROMPTS (sizeof(TABLE) / sizeof(TABLE[0]))
 
