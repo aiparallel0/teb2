@@ -21,18 +21,54 @@ the feedback cycle the audit flagged as Gap 4.
 | ------------------ | --------------------- | ------------------------ | -------------------------------------- |
 | Clarify            | `agents/clarify.c`    | `clarify.md`             | `{status, questions, readiness_score}` |
 | Decompose          | `agents/decompose.c`  | `decompose.md`           | `{tasks:[{title,agent,depends_on,…}]}` |
-| Router (lib)       | `agents/coord.c`      | `router.md`              | `{agent, confidence}` — *optional*     |
+| Router             | `agents/router.c`     | `router.md`              | `{agent, confidence, rationale}`       |
 | Research           | `agents/research.c`   | `research.md`            | `{summary, key_facts, confidence}`     |
 | Browser plan (lib) | (driver pending)      | `browse.md`              | `{plan:[…], stop_conditions:[…]}`      |
 | Measure            | `agents/measure.c`    | `measure.md`             | `{score_0_100, rubric, next_action}`   |
 | Learn              | `agents/learn.c`      | `learn.md`               | `{insight, tags, generalizes_to}`      |
-| Outreach (nudge)   | `agents/outreach.c`   | `outreach.nudge.md`      | `{message, tone, references_learnings}`|
-| Outreach (notify)  | `agents/outreach.c`   | `outreach.notify.md`     | SMTP subject/body/urgency              |
-| Finance (risk)     | `agents/finance.c`    | `finance.risk.md`        | `{risk, signals, recommend}`           |
-| Plugin (webhook)   | `agents/plugin.c`     | `plugin.webhook.md`      | `{headers, body_json}`                 |
+| Exec (dispatcher)  | `agents/exec.c`       | `exec.*.md` (12 sub)     | Schema of chosen `exec.*` prompt       |
+| Outreach           | `agents/outreach.c`   | `outreach.*.md` (6 sub)  | Schema of chosen `outreach.*` prompt   |
+| Finance            | `agents/finance.c`    | `finance.*.md` (4 sub)   | Schema of chosen `finance.*` prompt    |
+| Plugin             | `agents/plugin.c`     | `plugin.*.md` (3 sub)    | Schema of chosen `plugin.*` prompt     |
 
 Every LLM call also gets `system/persona.md` + `system/guardrails.md`
 prepended automatically by `core/llm.c`.
+
+## Prompt catalog (43 total)
+
+Prompts are grouped by namespace. Each file follows the 8-section
+structure mandated by `docs/PROMPTS.md`.
+
+- **System** (2): `system/persona`, `system/guardrails`.
+- **Loop** (7): `clarify`, `decompose`, `router`, `research`,
+  `browse`, `measure`, `learn`.
+- **Exec** (12): `exec.code`, `exec.code_review`, `exec.refactor`,
+  `exec.write`, `exec.summarize`, `exec.extract`, `exec.classify`,
+  `exec.sql`, `exec.translate`, `exec.rewrite`, `exec.sentiment`,
+  `exec.plan`.
+- **Outreach** (6): `outreach.nudge`, `outreach.notify`,
+  `outreach.reply`, `outreach.cold`, `outreach.followup`,
+  `outreach.apology`.
+- **Finance** (4): `finance.risk`, `finance.forecast`,
+  `finance.categorize`, `finance.receipt`.
+- **Plugin** (3): `plugin.webhook`, `plugin.oauth_choose`,
+  `plugin.error_repair`.
+- **Data** (3): `data.redact`, `data.moderate`, `data.json_repair`.
+- **Meeting** (3): `meeting.agenda`, `meeting.notes`, `meeting.retro`.
+- **Doc** (2): `doc.qa`, `doc.outline`.
+- **Ops** (1): `triage.ticket`.
+
+## How `exec.*` is picked
+
+When Decompose assigns `agent="exec"` to a task, `api/exec.c` emits
+`MSG_EXEC_RUN`, which `agents/coord.c` routes to
+`agents/exec.c::exec_handle`. That handler picks a specific
+`exec.*` prompt from a keyword table over the task description
+(`code_review`, `refactor`, `sql`, `translate`, `summarize`,
+`extract`, `classify`, `sentiment`, `rewrite`, `write`, `plan`,
+`code`). If no keyword matches, the default is `exec.plan` — the
+handler refuses to guess and instead produces a plan for a
+subsequent focused call.
 
 ## Invariants
 
@@ -63,5 +99,9 @@ prepended automatically by `core/llm.c`.
 
 ## Deferred work
 
-See `docs/FOLLOWUPS.md` for phases not yet shipped (router promotion,
-grounded research, multi-provider, run supervision, types-split).
+See `docs/FOLLOWUPS.md` for phases not yet shipped. The gaps this PR
+closed — `exec` dead-letter bug, anaemic prompt catalog (13→43),
+router callability — are struck through there. Still open: grounded
+research (§E), multi-provider (§G), run supervision (§I), types-split
+(§L.2), golden-set evals (§J), editable per-tenant prompts (§K),
+browser driver.

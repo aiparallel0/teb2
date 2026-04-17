@@ -47,6 +47,32 @@ them.
   underscores in the generated C symbol (`P_OUTREACH_NUDGE`).
 - `system/` prompts live under that subdirectory and compile to
   `core/pd/system_<name>.c` with symbols `P_SYSTEM_<NAME>`.
+- Namespaces group related prompts and keep routing tractable. The
+  registered namespaces are: **system**, **loop** (no prefix —
+  `clarify`, `decompose`, `router`, `research`, `browse`, `measure`,
+  `learn`), **exec**, **outreach**, **finance**, **plugin**,
+  **data**, **meeting**, **doc**, **triage**. Adding a new namespace
+  is allowed; adding a new prompt inside an existing namespace is
+  preferred when the shape fits.
+
+## Catalog (43 prompts)
+
+Run `make prompts` after adding or editing any file under `prompts/`.
+CI fails if the registry (`core/prompts.c` TABLE) and the directory
+drift.
+
+| Namespace | Count | Prompts                                                             |
+| --------- | ----- | ------------------------------------------------------------------- |
+| system    | 2     | `persona`, `guardrails`                                             |
+| loop      | 7     | `clarify`, `decompose`, `router`, `research`, `browse`, `measure`, `learn` |
+| exec      | 12    | `code`, `code_review`, `refactor`, `write`, `summarize`, `extract`, `classify`, `sql`, `translate`, `rewrite`, `sentiment`, `plan` |
+| outreach  | 6     | `nudge`, `notify`, `reply`, `cold`, `followup`, `apology`           |
+| finance   | 4     | `risk`, `forecast`, `categorize`, `receipt`                         |
+| plugin    | 3     | `webhook`, `oauth_choose`, `error_repair`                           |
+| data      | 3     | `redact`, `moderate`, `json_repair`                                 |
+| meeting   | 3     | `agenda`, `notes`, `retro`                                          |
+| doc       | 2     | `qa`, `outline`                                                     |
+| triage    | 1     | `ticket`                                                            |
 
 ## Viewing at runtime
 

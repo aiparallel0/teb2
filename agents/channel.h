@@ -16,5 +16,7 @@ AgentMsg learn_handle(AgentMsg msg);
 AgentMsg decompose_handle(AgentMsg msg);
 AgentMsg plugin_handle(AgentMsg msg);
 AgentMsg oauth_handle(AgentMsg msg);
+AgentMsg exec_handle(AgentMsg msg);
+AgentMsg router_handle(AgentMsg msg);
 
 #endif /* CHANNEL_H */
