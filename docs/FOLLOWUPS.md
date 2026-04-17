@@ -107,43 +107,52 @@ real eval harness still needs:
 
 ## Phase H — Prompt library toward n8n/Notion bar *(advanced in this PR)*
 
-Previously: added `persona.onboarding`, `memory.compact`, `learn.dedup`,
-`decompose.critic`, `measure.critic`, `kb.qa`, `planner.weekly`,
-`report.weekly`, `outreach.escalation`, `code.debug` — pushing the
-library from 43 to 53 prompts and introducing the `## Tool manifest`
-section.
+Previously: pushed the library from 43 → 53 → 77 → 99 prompts and
+introduced the `## Tool manifest` section on every prompt.
 
-This PR adds **24 more prompts** (53 → 77) covering the
-workflow domains users would otherwise reach for n8n / Zapier /
-Notion-templates to solve:
+This PR adds **22 more prompts** (99 → 121) targeting the
+workflow domains that previously forced users to reach outside
+teb2 for production-grade automation:
 
-- `sales.qualify`, `sales.account_research`
-- `marketing.seo_brief`, `marketing.ad_variants`, `marketing.social_thread`
-- `product.user_story`, `product.prioritize_rice`, `product.release_notes`
-- `hr.resume_screen`, `hr.interview_questions`
-- `legal.contract_review`
-- `ops.incident_postmortem`, `ops.runbook_draft`, `ops.log_triage`
-- `code.test_gen`, `code.pr_description`, `code.commit_msg`
-- `safety.injection_detect`
-- `data.entity_extract`, `data.anomaly_detect`
-- `integration.field_map`, `integration.webhook_transform`
-- `email.thread_summary`, `task.prioritize_eisenhower`
+- Sales — `sales.win_loss`, `sales.renewal_risk`, `sales.forecast_rollup`
+- Marketing — `marketing.case_study`, `marketing.press_release`
+- Support — `support.churn_risk`, `support.csat_followup`
+- Product — `product.feature_spec`, `product.experiment_design`
+- Ops / SRE — `ops.oncall_handoff`, `ops.slo_review`
+- Engineering — `code.api_design`, `code.adr`
+- Data / analytics — `data.dashboard_spec`, `data.data_quality`
+- Legal — `legal.privacy_notice`, `legal.nda_check`
+- HR — `hr.job_description`, `hr.pip_plan`
+- Integration — `integration.retry_policy`, `integration.rate_limit_plan`
+- Research — `research.competitive_analysis`
 
 Each new prompt follows the established template (Role / Input /
 JSON Output / Rules / Example / Anti-example / Refusal / Injection
-hardening / Tool manifest), and each ships the safety-critical ones
-(HR, legal, safety, postmortem, ad variants) with red-team fixtures
-under `evals/redteam/new_prompts.jsonl`. See
-`docs/PROMPT_CATALOG.md` for a workflow-oriented index.
+hardening / Tool manifest) and stays within the 166-line cap on its
+generated C file. Safety-sensitive additions (NDA check, privacy
+notice, PIP, JD, press release, churn risk, CSAT auto-send,
+experiment design, SLO loosen, API design, dashboard-with-PII,
+retry on money movement, rate-limit 503 on payments, competitor
+defamation) ship red-team fixtures under
+`evals/redteam/new_prompts3.jsonl` so CI drift-locks the prompt
+names and expectation shapes. See `docs/PROMPT_CATALOG.md` for a
+workflow-oriented index.
 
 Still needed:
 
+- A real eval runner (not just a drift guard): replay every
+  `evals/golden/*.jsonl` against a model, score vs `expect`,
+  aggregate pass@1, gate CI on regression. The current
+  `evals/run.sh` still only shape-checks fixtures.
 - Expand every prompt to 150–250 lines with 5+ worked examples, a
-  failure-mode catalogue, and a JSON-Schema block.
+  failure-mode catalogue, and a JSON-Schema block round-trip checked
+  against the prompt text.
 - Prompt versioning at runtime (content hash stored on every agent
   call in a new `prompt_runs` table).
 - Planner/critic pairs invoked automatically after decompose/measure.
 - Per-tenant override plumbing (`prompt_override(tenant_id, name)`).
+- Wire `safety.injection_detect` in-line on all untrusted user text
+  before it reaches downstream agent prompts.
 
 ## Phase I — Production hygiene *(partial in this PR)*
 

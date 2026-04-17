@@ -36,9 +36,25 @@ names the downstream system each field drives.
 | ------------------------- | ----------------------------------------------------------------- |
 | `sales.qualify`           | BANT / MEDDIC classification of an inbound or sourced lead.       |
 | `sales.account_research`  | Pre-meeting account brief; citation-grounded on snippets.         |
+| `sales.discovery_notes`   | Raw discovery-call notes → MEDDIC fields with literal evidence.   |
+| `sales.proposal_draft`    | Qualified opp → first-draft proposal envelope for Deal Desk.      |
+| `sales.win_loss`          | Interview transcript → evidence-grounded win/loss analysis.       |
+| `sales.renewal_risk`      | Account signals → renewal risk tier + 90-day plan.                |
+| `sales.forecast_rollup`   | Opp list + policy → commit/best/pipeline roll-up with overrides.  |
 | `outreach.cold`           | Personalised cold email with CTA + compliance checks.             |
 | `outreach.followup`       | Scheduled follow-up after N days of silence.                      |
 | `outreach.nudge`          | Gentle commitment reminder.                                       |
+
+## Customer support
+
+| Prompt                    | Job                                                               |
+| ------------------------- | ----------------------------------------------------------------- |
+| `support.reply`           | Draft a single customer-facing ticket reply with HITL signals.    |
+| `support.macro_suggest`   | Pick the best-fitting canned macro or decline to suggest one.     |
+| `support.faq_generate`    | Cluster of resolved tickets → one reusable FAQ entry.             |
+| `support.churn_risk`      | Score a single ticket for churn risk; routes + save-play family.  |
+| `support.csat_followup`   | CSAT score + text → follow-up reply gated by policy flags.        |
+| `triage.ticket`           | Inbound ticket → category + severity + next step.                 |
 
 ## Marketing
 
@@ -47,6 +63,10 @@ names the downstream system each field drives.
 | `marketing.seo_brief`       | Writer-ready SEO brief from a target keyword + SERP snapshot.   |
 | `marketing.ad_variants`     | A/B-ready paid-ad copy matrix with guardrails.                  |
 | `marketing.social_thread`   | Turn a source into a platform-shaped thread with citations.     |
+| `marketing.landing_copy`    | Landing-page section blocks (hero, value props, objections, SEO). |
+| `marketing.newsletter`      | One issue of a newsletter built from links + metrics + notes.   |
+| `marketing.case_study`      | Customer interview → publish-ready case study gated on consent. |
+| `marketing.press_release`   | Structured press release with safe-harbor + embargo handling.   |
 | `exec.write`                | Long-form writing step once a brief is approved.                |
 | `exec.rewrite`              | Tone / length rewrite of existing copy.                         |
 
@@ -57,8 +77,11 @@ names the downstream system each field drives.
 | `product.user_story`        | Raw feature ask → user story with Given/When/Then AC.           |
 | `product.prioritize_rice`   | RICE scoring of a backlog, with a cut line.                     |
 | `product.release_notes`     | Merged PRs → user-facing release notes; hides embargoed items.  |
+| `product.okr_draft`         | Theme + baselines → one Objective with 2–4 outcome-shaped KRs.  |
+| `product.project_brief`     | One-page project brief (Notion-style) with scope + milestones.  |
+| `product.feature_spec`      | Feature one-pager with scope, risks, success metrics, gates.    |
+| `product.experiment_design` | Rigorous A/B test design with guardrails + stopping rules.      |
 | `exec.plan`                 | Multi-step execution plan for a single large task.              |
-| `triage.ticket`             | Inbound ticket → category + severity + next step.               |
 
 ## Engineering & code lifecycle
 
@@ -71,7 +94,11 @@ names the downstream system each field drives.
 | `code.test_gen`             | Test plan for a function, language-agnostic specs.              |
 | `code.pr_description`       | Staged diff → full PR body + labels + reviewers.                |
 | `code.commit_msg`           | Diff summary → Conventional Commits message.                    |
+| `code.migration_plan`       | Staged, reversible migration plan (expand/contract/dual-write). |
+| `code.api_design`           | API design review: hygiene, compat, security, observability.    |
+| `code.adr`                  | Architecture Decision Record (Nygard/Cognitect format).         |
 | `exec.sql`                  | Natural-language → safe read-only SQL against a known schema.   |
+| `data.sql_explain`          | Plain-English explanation + perf/correctness flags for a query. |
 
 ## Ops, SRE, incident management
 
@@ -80,17 +107,24 @@ names the downstream system each field drives.
 | `ops.incident_postmortem`   | Raw timeline → blameless postmortem with SMART action items.    |
 | `ops.runbook_draft`         | Symptom → conservative runbook (precheck → diagnose → mitigate).|
 | `ops.log_triage`            | Log window → clustered patterns + next action (no false pages). |
+| `ops.deploy_plan`           | Conservative rollout plan with pre-checks, phases, abort rules. |
+| `ops.rollback_plan`         | Rollback decision + ordered steps + comms + data concerns.      |
+| `ops.dependency_advisory`   | CVE / GHSA triage in *our* context; SLA, mitigation, follow-up. |
+| `ops.oncall_handoff`        | End-of-shift handoff note with ack-required items.              |
+| `ops.slo_review`            | SLO period review with burn rate + loosen/tighten recommendation. |
 | `data.anomaly_detect`       | Short time-series → flagged anomalies + recommended action.     |
 | `plugin.error_repair`       | Downstream API error → bounded retry / repair plan.             |
 
 ## Finance
 
-| Prompt                 | Job                                                                  |
-| ---------------------- | -------------------------------------------------------------------- |
-| `finance.risk`         | Rate a proposed spend / payment for risk (always-HITL on movement).  |
-| `finance.forecast`     | Short-horizon cash / spend forecast with assumptions.                |
-| `finance.categorize`   | Classify transactions into a canonical chart of accounts.            |
-| `finance.receipt`      | Extract line items + totals from a receipt image OCR'd to text.      |
+| Prompt                     | Job                                                                  |
+| -------------------------- | -------------------------------------------------------------------- |
+| `finance.risk`             | Rate a proposed spend / payment for risk (always-HITL on movement).  |
+| `finance.forecast`         | Short-horizon cash / spend forecast with assumptions.                |
+| `finance.categorize`       | Classify transactions into a canonical chart of accounts.            |
+| `finance.receipt`          | Extract line items + totals from a receipt image OCR'd to text.      |
+| `finance.invoice_review`   | Invoice vs contract/PO review; dispute points, suggested reply.      |
+| `finance.budget_variance`  | Budget vs actuals → narrative with evidence and watch-next items.    |
 
 ## HR & recruiting
 
@@ -98,12 +132,19 @@ names the downstream system each field drives.
 | ---------------------------- | -------------------------------------------------------------- |
 | `hr.resume_screen`           | JD + résumé → structured fit; no protected-attribute use.      |
 | `hr.interview_questions`     | Jurisdiction-aware, seniority-calibrated interview loop.       |
+| `hr.performance_review`      | Evidence → review draft; protected attributes forbidden; HITL. |
+| `hr.one_on_one`              | Report-first 1:1 agenda with SBI feedback frame (optional).    |
+| `hr.offboarding_checklist`   | Access + assets + knowledge-transfer items with owners & SLAs. |
+| `hr.job_description`         | JD draft with jurisdiction-aware comp disclosure + EEO copy.   |
+| `hr.pip_plan`                | PIP draft: behavioural, observable, ≥4-week, HR+legal gates.   |
 
 ## Legal & compliance
 
 | Prompt                     | Job                                                              |
 | -------------------------- | ---------------------------------------------------------------- |
 | `legal.contract_review`    | Clause-level risk triage with redlines; always non-advice.       |
+| `legal.privacy_notice`     | Public privacy-notice section tied to practice + jurisdictions.  |
+| `legal.nda_check`          | Red/yellow/green NDA review vs. playbook with redline asks.      |
 | `data.redact`              | PII / secret redaction pass before persistence or outbound send. |
 | `data.moderate`            | Policy-violation classification for free text.                   |
 | `safety.injection_detect`  | Prompt-injection classifier with recommended dispatch action.    |
@@ -114,6 +155,8 @@ names the downstream system each field drives.
 | ---------------------------------- | -------------------------------------------------------- |
 | `integration.field_map`            | Source schema → target schema mapping spec.              |
 | `integration.webhook_transform`    | Incoming webhook payload → internal event via JSONPath.  |
+| `integration.retry_policy`         | Retry policy: which errors, attempts, backoff, budgets.  |
+| `integration.rate_limit_plan`      | Per-caller/account/global rate limits + headers + shed.  |
 | `plugin.webhook`                   | Design a receiving webhook for a given partner.          |
 | `plugin.oauth_choose`              | Choose an OAuth scope set for a new integration.         |
 | `data.json_repair`                 | Force-repair malformed JSON into the caller's schema.    |
@@ -139,6 +182,10 @@ names the downstream system each field drives.
 | `exec.extract`      | Extract structured fields from free text by a schema.                    |
 | `exec.classify`     | Classify free text into a caller-provided taxonomy.                      |
 | `data.entity_extract`| Extract named entities with literal spans + per-type canonicalization.  |
+| `data.metric_definition` | Natural-language metric ask → reproducible metric spec + PII handling. |
+| `data.dashboard_spec` | Dashboard spec: audience, metrics, refresh, access, exclusions.        |
+| `data.data_quality`  | DQ rules pack: not_null, unique, range, freshness, row_count per consumer. |
+| `research.competitive_analysis` | Evidence-grounded competitor landscape; external-publish gated. |
 
 ## Personal productivity
 
@@ -147,6 +194,8 @@ names the downstream system each field drives.
 | `planner.weekly`               | One-week time-blocked plan from open goals + persona.         |
 | `report.weekly`                | Backward-looking weekly summary of what happened.             |
 | `task.prioritize_eisenhower`   | Tasks → urgent/important quadrants + today's top three.       |
+| `task.daily_standup`           | Yesterday + today + blockers + one-ask standup post.          |
+| `task.inbox_triage`            | Batch of messages → respond/delegate/schedule/archive/HITL.   |
 | `outreach.notify`              | Draft a user-facing notification for a completed action.      |
 | `outreach.apology`             | Calibrated apology after a commitment miss or incident.       |
 | `outreach.reply`               | Reply draft inheriting prior-thread tone.                     |
