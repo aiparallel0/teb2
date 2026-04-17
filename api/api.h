@@ -47,6 +47,14 @@ HttpResp handle_exec_run(HttpReq req, Ctx *ctx);
 /* api/decompose.c */
 HttpResp handle_decompose_run(HttpReq req, Ctx *ctx);
 
+/* api/approvals.c */
+HttpResp handle_approval_list(HttpReq req, Ctx *ctx);
+HttpResp handle_approval_update(HttpReq req, Ctx *ctx);
+
+/* api/prompts.c */
+HttpResp handle_prompt_list(HttpReq req, Ctx *ctx);
+HttpResp handle_prompt_get(HttpReq req, Ctx *ctx);
+
 /* api/schedules.c */
 HttpResp handle_sched_create(HttpReq req, Ctx *ctx);
 HttpResp handle_sched_list(HttpReq req, Ctx *ctx);
@@ -138,5 +146,7 @@ HttpResp handle_ui_collabjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_dashjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_enterprisejs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_analyticsjs(HttpReq req, Ctx *ctx);
+HttpResp handle_ui_approvalsjs(HttpReq req, Ctx *ctx);
+HttpResp handle_ui_promptsjs(HttpReq req, Ctx *ctx);
 
 #endif /* API_H */

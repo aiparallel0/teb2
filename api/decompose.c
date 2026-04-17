@@ -5,33 +5,25 @@
 #include "core/types.h"
 #include "core/errors.h"
 #include "auth/auth.h"
+#include "agents/channel.h"
 #include "db/db.h"
 #include "api/json.h"
 
-static TaskResult create_subtask(Db *db, GoalResult gr,
-                                 const char *prefix)
-{
-    TaskQuery tq;
-    memset(&tq, 0, sizeof(tq));
-    tq.goal_id = gr.rows[0].id;
-    snprintf(tq.user_id, sizeof(tq.user_id), "%s", gr.rows[0].user_id);
-    snprintf(tq.title, sizeof(tq.title), "%.10s: %.240s", prefix,
-             gr.rows[0].title);
-    return store_task(db, tq);
-}
-
 /*
  * POST /decompose/{goal_id}
- * Fetches goal, creates Research/Execute/Measure subtasks,
- * sets goal status to "decomposed".
+ *
+ * Fetches the goal, calls decompose_handle (which invokes the LLM
+ * with prompts/decompose.md), and reports how many tasks the
+ * LLM-driven decomposition persisted. Replaces the earlier hardcoded
+ * Research/Execute/Measure stub — that was gap L.1 in the audit.
  */
 HttpResp handle_decompose_run(HttpReq req, Ctx *ctx)
 {
-    GoalQuery gq;
+    GoalQuery  gq;
     GoalResult gr;
-    TaskResult tr;
+    AgentMsg   am, res;
     const char *idstr;
-    int created;
+    int created = 0;
     char buf[256];
 
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
@@ -47,13 +39,20 @@ HttpResp handle_decompose_run(HttpReq req, Ctx *ctx)
     if (gr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (gr.err != ERR_OK)        return json_error(500, "db_error");
 
-    created = 0;
-    tr = create_subtask(ctx->db, gr, "Research");
-    if (tr.err == ERR_OK) created++;
-    tr = create_subtask(ctx->db, gr, "Execute");
-    if (tr.err == ERR_OK) created++;
-    tr = create_subtask(ctx->db, gr, "Measure");
-    if (tr.err == ERR_OK) created++;
+    memset(&am, 0, sizeof(am));
+    am.tag = MSG_DECOMPOSE;
+    am.id  = gr.rows[0].id;
+    snprintf(am.user_id, sizeof(am.user_id), "%s", gr.rows[0].user_id);
+    snprintf(am.payload, sizeof(am.payload), "%.255s %.255s",
+             gr.rows[0].title, gr.rows[0].description);
+    am.cfg = ctx->cfg;
+    am.db  = ctx->db;
+
+    res = decompose_handle(am);
+    if (res.err == ERR_OK) {
+        const char *c = strchr(res.payload, ':');
+        if (c) created = atoi(c + 1);
+    }
 
     memset(&gq, 0, sizeof(gq));
     gq.id = gr.rows[0].id;
@@ -62,8 +61,8 @@ HttpResp handle_decompose_run(HttpReq req, Ctx *ctx)
     if (gr.err != ERR_OK) return json_error(500, "status_error");
 
     snprintf(buf, sizeof(buf),
-             "{\"goal_id\":%lld,\"status\":\"decomposed\","
-             "\"tasks\":%d}",
+             "{\"goal_id\":%lld,\"status\":\"decomposed\",\"tasks\":%d}",
              (long long)gq.id, created);
     return json_ok(buf);
 }
+

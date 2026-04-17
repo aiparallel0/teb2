@@ -27,6 +27,7 @@ SRCS = core/config.c core/ratelimit.c core/llm.c core/prompts.c core/sanitize.c 
 	     api/server.c api/json.c api/escape.c api/goals.c api/tasks.c \
 	     api/auth.c api/outcomes.c api/nudges.c api/learn.c api/exec.c \
 	     api/decompose.c api/schedules.c api/budgets.c api/routes.c \
+	     api/approvals.c api/prompts.c \
 	     api/collab.c api/integrations.c api/enterprise.c api/analytics.c \
 	     api/gamification.c api/community.c api/sse.c \
 	     api/assets.c api/notify.c api/workflow.c api/search.c \
