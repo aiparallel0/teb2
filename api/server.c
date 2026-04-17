@@ -30,7 +30,7 @@ HttpReq parse_request(const char *raw, size_t len)
             const char *tk = strstr(qm, "token=");
             if (tk && !req.auth_header[0])
                 snprintf(req.auth_header, sizeof(req.auth_header),
-                         "Bearer %s", tk + 6);
+                         "%.*s", (int)strcspn(tk + 6, "&"), tk + 6);
             snprintf(req.query, sizeof(req.query), "%s", qm + 1);
             *qm = '\0';
         }
@@ -38,6 +38,7 @@ HttpReq parse_request(const char *raw, size_t len)
     auth = strstr(raw, "\nAuthorization: ");
     if (auth) {
         auth += 16;
+        if (strncmp(auth, "Bearer ", 7) == 0) auth += 7;
         snprintf(req.auth_header, sizeof(req.auth_header),
                  "%.*s", (int)(strcspn(auth, "\r\n")), auth);
     }
