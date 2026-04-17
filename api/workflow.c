@@ -47,16 +47,13 @@ static int execute_steps(RunJob job, TaskResult tr)
 
 HttpResp handle_run_create(HttpReq req, Ctx *ctx)
 {
-    char       gid[32], buf[256];
-    RunQuery   rq;
-    RunResult  rr, ur;
-    TaskQuery  tq;
-    TaskResult tr;
-    StepQuery  sq;
-    StepResult sr;
-    RunJob     job;
-    pid_t      pid;
-    int        i;
+    char gid[32], buf[256];
+    RunQuery rq; RunResult rr, ur;
+    TaskQuery tq; TaskResult tr;
+    StepQuery sq; StepResult sr;
+    RunJob job;
+    pid_t pid;
+    int i;
 
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_GOAL_WRITE))
@@ -124,14 +121,14 @@ HttpResp handle_run_create(HttpReq req, Ctx *ctx)
 
 HttpResp handle_run_get(HttpReq req, Ctx *ctx)
 {
-    RunQuery   rq;
-    RunResult  rr;
-    StepResult sr;
-    char buf[2048], es[32];
+    RunQuery rq; RunResult rr; StepResult sr;
+    GoalQuery gq; GoalResult gr;
+    char buf[2048], es[32], uid[64];
     int i, off;
     const char *idstr;
-
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
+    if (!rbac_allow(ctx->user->role, PERM_GOAL_READ))
+        return json_error(403, "forbidden");
     memset(&rq, 0, sizeof(rq));
     idstr = strrchr(req.path, '/');
     rq.id = idstr ? strtoll(idstr + 1, NULL, 10) : 0;
@@ -139,6 +136,13 @@ HttpResp handle_run_get(HttpReq req, Ctx *ctx)
     rr = fetch_run(ctx->db, rq);
     if (rr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (rr.err != ERR_OK) return json_error(500, "db_error");
+    /* Tenant check: user may only read runs of goals they own. */
+    memset(&gq, 0, sizeof(gq)); gq.id = rr.run.goal_id;
+    gr = fetch_goal(ctx->db, gq);
+    snprintf(uid, sizeof(uid), "%lld", (long long)ctx->user->user_id);
+    if (ctx->user->role != ROLE_ADMIN &&
+        (gr.err != ERR_OK || strcmp(gr.rows[0].user_id, uid) != 0))
+        return json_error(403, "forbidden");
     sr = list_steps(ctx->db, rr.run.id);
     json_escape(rr.run.status, es, sizeof(es));
     off = snprintf(buf, sizeof(buf),
