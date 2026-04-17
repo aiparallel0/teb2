@@ -25,7 +25,7 @@ FIXTURES = {
     "clarify":        '{"status":"ready","questions":[],"readiness_score":85,"missing_dimensions":[],"reasoning":"goal appears specific enough"}',
     "decompose":      '{"tasks":[{"title":"Research market","description":"find comparable products","agent":"research","depends_on":[],"effort_minutes":45,"est_cost_cents":0,"requires_hitl":false,"success_criteria":"3 comparables identified"},{"title":"Draft outreach","description":"write intro email","agent":"outreach","depends_on":[0],"effort_minutes":20,"est_cost_cents":0,"requires_hitl":false,"success_criteria":"email saved"}]}',
     "measure":        '{"score_0_100":72,"rubric":[{"criterion":"outcome present","met":true,"evidence":"result text provided"}],"next_action":"retry","reasoning":"partial completion"}',
-    "learn":          '{"insight":"short focused drafts outperform long ones","tags":["writing","outreach"],"generalizes_to":"drafting any short-form communication","confidence":0.7,"evidence_excerpt":"outcome indicates reply rate doubled with brevity"}',
+    "learn":          '{"insight":"short focused drafts outperform long ones","tags":["writing","outreach"],"generalizes_to":"drafting any short-form communication","confidence":"medium","evidence_excerpt":"outcome indicates reply rate doubled with brevity"}',
     "research":       '{"summary":"overview unavailable without grounded sources","key_facts":[],"confidence":"low","open_questions":["needs web access"]}',
     "browse":         '{"plan":[{"action":"click","selector":"button#go","value":""}],"stop_conditions":["URL matches /done"],"requires_confirmation":false,"explanation":"mock plan"}',
     "router":         '{"agent":"exec","confidence":0.6,"rationale":"default bucket"}',
