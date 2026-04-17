@@ -107,31 +107,34 @@ real eval harness still needs:
 
 ## Phase H — Prompt library toward n8n/Notion bar *(advanced in this PR)*
 
-Previously: pushed the library from 43 → 53 → 77 prompts and introduced
-the `## Tool manifest` section on every prompt.
+Previously: pushed the library from 43 → 53 → 77 → 99 prompts and
+introduced the `## Tool manifest` section on every prompt.
 
-This PR adds **22 more prompts** (77 → 99) targeting the concrete
-workflow domains teams currently reach for n8n / Zapier / Notion
-templates to solve:
+This PR adds **22 more prompts** (99 → 121) targeting the
+workflow domains that previously forced users to reach outside
+teb2 for production-grade automation:
 
-- Customer support — `support.reply`, `support.macro_suggest`, `support.faq_generate`
-- Sales — `sales.discovery_notes`, `sales.proposal_draft`
-- Marketing — `marketing.landing_copy`, `marketing.newsletter`
-- Product — `product.okr_draft`, `product.project_brief`
-- HR — `hr.performance_review`, `hr.one_on_one`, `hr.offboarding_checklist`
-- Ops / SRE — `ops.deploy_plan`, `ops.rollback_plan`, `ops.dependency_advisory`
-- Data / analytics — `data.metric_definition`, `data.sql_explain`
-- Engineering — `code.migration_plan`
-- Finance — `finance.invoice_review`, `finance.budget_variance`
-- Personal productivity — `task.daily_standup`, `task.inbox_triage`
+- Sales — `sales.win_loss`, `sales.renewal_risk`, `sales.forecast_rollup`
+- Marketing — `marketing.case_study`, `marketing.press_release`
+- Support — `support.churn_risk`, `support.csat_followup`
+- Product — `product.feature_spec`, `product.experiment_design`
+- Ops / SRE — `ops.oncall_handoff`, `ops.slo_review`
+- Engineering — `code.api_design`, `code.adr`
+- Data / analytics — `data.dashboard_spec`, `data.data_quality`
+- Legal — `legal.privacy_notice`, `legal.nda_check`
+- HR — `hr.job_description`, `hr.pip_plan`
+- Integration — `integration.retry_policy`, `integration.rate_limit_plan`
+- Research — `research.competitive_analysis`
 
 Each new prompt follows the established template (Role / Input /
 JSON Output / Rules / Example / Anti-example / Refusal / Injection
 hardening / Tool manifest) and stays within the 166-line cap on its
-generated C file. Safety-sensitive additions (performance review,
-offboarding, deploy/rollback, advisory triage, invoice review,
-support reply, inbox triage) ship red-team fixtures under
-`evals/redteam/new_prompts2.jsonl` so CI drift-locks the prompt
+generated C file. Safety-sensitive additions (NDA check, privacy
+notice, PIP, JD, press release, churn risk, CSAT auto-send,
+experiment design, SLO loosen, API design, dashboard-with-PII,
+retry on money movement, rate-limit 503 on payments, competitor
+defamation) ship red-team fixtures under
+`evals/redteam/new_prompts3.jsonl` so CI drift-locks the prompt
 names and expectation shapes. See `docs/PROMPT_CATALOG.md` for a
 workflow-oriented index.
 

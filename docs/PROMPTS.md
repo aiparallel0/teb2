@@ -55,7 +55,7 @@ them.
   is allowed; adding a new prompt inside an existing namespace is
   preferred when the shape fits.
 
-## Catalog (99 prompts)
+## Catalog (121 prompts)
 
 Run `make prompts` after adding or editing any file under `prompts/`.
 CI fails if the registry (`core/prompts.c` TABLE) and the directory
@@ -70,22 +70,23 @@ drift.
 | outreach      | 7     | `nudge`, `notify`, `reply`, `cold`, `followup`, `apology`, `escalation` |
 | finance       | 6     | `risk`, `forecast`, `categorize`, `receipt`, `invoice_review`, `budget_variance` |
 | plugin        | 3     | `webhook`, `oauth_choose`, `error_repair`                           |
-| data          | 7     | `redact`, `moderate`, `json_repair`, `entity_extract`, `anomaly_detect`, `metric_definition`, `sql_explain` |
+| data          | 9     | `redact`, `moderate`, `json_repair`, `entity_extract`, `anomaly_detect`, `metric_definition`, `sql_explain`, `dashboard_spec`, `data_quality` |
 | meeting       | 3     | `agenda`, `notes`, `retro`                                          |
 | doc / kb      | 3     | `doc.qa`, `doc.outline`, `kb.qa`                                    |
 | triage        | 1     | `ticket`                                                            |
 | planner       | 2     | `planner.weekly`, `report.weekly`                                   |
-| code          | 5     | `code.debug`, `code.test_gen`, `code.pr_description`, `code.commit_msg`, `code.migration_plan` |
-| sales         | 4     | `sales.qualify`, `sales.account_research`, `sales.discovery_notes`, `sales.proposal_draft` |
-| marketing     | 5     | `marketing.seo_brief`, `marketing.ad_variants`, `marketing.social_thread`, `marketing.landing_copy`, `marketing.newsletter` |
-| product       | 5     | `product.user_story`, `product.prioritize_rice`, `product.release_notes`, `product.okr_draft`, `product.project_brief` |
-| hr            | 5     | `hr.resume_screen`, `hr.interview_questions`, `hr.performance_review`, `hr.one_on_one`, `hr.offboarding_checklist` |
-| legal         | 1     | `legal.contract_review`                                             |
-| ops           | 6     | `ops.incident_postmortem`, `ops.runbook_draft`, `ops.log_triage`, `ops.deploy_plan`, `ops.rollback_plan`, `ops.dependency_advisory` |
+| code          | 7     | `code.debug`, `code.test_gen`, `code.pr_description`, `code.commit_msg`, `code.migration_plan`, `code.api_design`, `code.adr` |
+| sales         | 7     | `sales.qualify`, `sales.account_research`, `sales.discovery_notes`, `sales.proposal_draft`, `sales.win_loss`, `sales.renewal_risk`, `sales.forecast_rollup` |
+| marketing     | 7     | `marketing.seo_brief`, `marketing.ad_variants`, `marketing.social_thread`, `marketing.landing_copy`, `marketing.newsletter`, `marketing.case_study`, `marketing.press_release` |
+| product       | 7     | `product.user_story`, `product.prioritize_rice`, `product.release_notes`, `product.okr_draft`, `product.project_brief`, `product.feature_spec`, `product.experiment_design` |
+| hr            | 7     | `hr.resume_screen`, `hr.interview_questions`, `hr.performance_review`, `hr.one_on_one`, `hr.offboarding_checklist`, `hr.job_description`, `hr.pip_plan` |
+| legal         | 3     | `legal.contract_review`, `legal.privacy_notice`, `legal.nda_check` |
+| ops           | 8     | `ops.incident_postmortem`, `ops.runbook_draft`, `ops.log_triage`, `ops.deploy_plan`, `ops.rollback_plan`, `ops.dependency_advisory`, `ops.oncall_handoff`, `ops.slo_review` |
 | safety        | 1     | `safety.injection_detect`                                           |
-| integration   | 2     | `integration.field_map`, `integration.webhook_transform`            |
-| support       | 3     | `support.reply`, `support.macro_suggest`, `support.faq_generate`    |
+| integration   | 4     | `integration.field_map`, `integration.webhook_transform`, `integration.retry_policy`, `integration.rate_limit_plan` |
+| support       | 5     | `support.reply`, `support.macro_suggest`, `support.faq_generate`, `support.churn_risk`, `support.csat_followup` |
 | email / task  | 4     | `email.thread_summary`, `task.prioritize_eisenhower`, `task.daily_standup`, `task.inbox_triage` |
+| research      | 1     | `research.competitive_analysis`                                     |
 
 For a workflow-oriented index (the way users browse n8n nodes or
 Notion templates — by what they're trying to get done, not by
