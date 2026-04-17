@@ -71,7 +71,7 @@ ssize_t slowloris_read(int fd, char *buf, size_t cap, int deadline_sec)
     if (!buf || cap == 0 || fd < 0) return -1;
     for (;;) {
         ssize_t n;
-        if ((time(NULL) - start) > deadline_sec) return -1;
+        if ((time(NULL) - start) >= deadline_sec) return -1;
         if (off >= cap - 1) return -1; /* oversize request */
         n = read(fd, buf + off, cap - 1 - off);
         if (n < 0) {

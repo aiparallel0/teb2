@@ -39,7 +39,11 @@ static void sanitize_filename(const char *in, char *out, size_t outsz)
                  (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-';
         if (ok) out[o++] = c;
     }
-    if (o == 0 || out[0] == '.') { out[o++] = 'f'; }
+    if (o == 0) {
+        out[o++] = 'f';
+    } else if (out[0] == '.') {
+        out[o++] = 'f';
+    }
     out[o] = '\0';
 }
 

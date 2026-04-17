@@ -17,6 +17,12 @@
 #include "agents/channel.h"
 #include "api/api.h"
 
+/* Wall-clock budget a worker will spend on one client, from accept()
+ * through complete request receipt. Kept small so a saturated pool
+ * reclaims workers quickly even under slowloris; nginx in front of
+ * teb2 keeps honest clients from ever hitting this. */
+#define REQUEST_DEADLINE_SEC 10
+
 static volatile sig_atomic_t g_running = 1;
 
 static void handle_signal(int sig) { (void)sig; g_running = 0; }
@@ -110,8 +116,8 @@ int main(int argc, char **argv)
             continue;
         }
         /* Slowloris / idle-client guard: hard deadlines on the socket. */
-        socket_set_deadlines(conn, 10, 10);
-        n = slowloris_read(conn, buf, sizeof(buf) - 1, 10);
+        socket_set_deadlines(conn, REQUEST_DEADLINE_SEC, REQUEST_DEADLINE_SEC);
+        n = slowloris_read(conn, buf, sizeof(buf) - 1, REQUEST_DEADLINE_SEC);
         if (n > 0) {
             buf[n] = '\0';
             req = parse_request(buf, (size_t)n);
