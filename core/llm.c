@@ -2,16 +2,16 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "core/types.h"
 #include "core/errors.h"
 #include "core/llm.h"
 #include "core/prompts.h"
+#include "core/log.h"
 #include "exec/exec.h"
+#include "db/db.h"
 
-/* Oversized buffers so persona + guardrails + a phase prompt (up to
- * ~6 KB each) can all be composed into a single system message
- * without truncation. main.c pre-forks workers, each worker is
- * single-threaded, so static storage is safe. */
+/* Static buffers — safe because each worker is single-threaded. */
 #define REQ_CAP  49152u
 #define SYS_CAP  24576u
 #define USR_CAP   8192u
@@ -34,7 +34,6 @@ static void esc_json(const char *src, char *dst, size_t dsz)
     dst[o] = '\0';
 }
 
-/* Extract the first top-level "content":"..." value. */
 static void parse_content(const char *body, char *out, size_t osz)
 {
     const char *p = strstr(body, "\"content\"");
@@ -66,7 +65,6 @@ static int parse_total_tokens(const char *body)
     return atoi(p);
 }
 
-/* Compose persona + guardrails + named prompt + optional context. */
 static void build_system(const LlmReq *req, char *out, size_t osz)
 {
     const char *pe = prompt_get("system/persona");
@@ -80,56 +78,86 @@ static void build_system(const LlmReq *req, char *out, size_t osz)
     if (n < 0 || (size_t)n >= osz) out[osz - 1] = '\0';
 }
 
+/* Jittered backoff: 1s, 2s, 4s with ±25% jitter */
+static void backoff_sleep(int attempt)
+{
+    struct timespec ts;
+    unsigned int base = (1u << (unsigned)attempt);
+    unsigned int jitter_ms = (unsigned int)(rand() % ((int)base * 250 + 1));
+    ts.tv_sec = (time_t)base;
+    ts.tv_nsec = (long)jitter_ms * 1000000L;
+    nanosleep(&ts, NULL);
+}
+
 LlmReply llm_call(LlmReq req, Config *cfg)
 {
     static char sysraw[SYS_CAP], esys[SYS_CAP * 2];
     static char eusr[USR_CAP * 2], body[BODY_CAP], reqbuf[REQ_CAP];
     static char resp[REQ_CAP];
     LlmReply r;
-    const char *model;
-    ssize_t n;
-    int hlen;
-    const char *bodyp;
+    const char *model, *host;
+    int hlen, max_tok, retries, attempt;
 
     memset(&r, 0, sizeof(r));
     if (!cfg || !cfg->openai_key[0]) { r.err = ERR_IO; return r; }
 
     build_system(&req, sysraw, sizeof(sysraw));
-    esc_json(sysraw,   esys, sizeof(esys));
+    esc_json(sysraw, esys, sizeof(esys));
     esc_json(req.user, eusr, sizeof(eusr));
-    model = req.model[0] ? req.model : cfg->openai_model;
+    model   = req.model[0] ? req.model : cfg->openai_model;
+    host    = cfg->llm_base_url[0] ? cfg->llm_base_url : "api.openai.com";
+    max_tok = req.max_tokens > 0 ? req.max_tokens : cfg->llm_max_tokens;
+    if (max_tok <= 0) max_tok = 1024;
+    retries = cfg->llm_retries > 0 ? cfg->llm_retries : 3;
 
     hlen = snprintf(body, sizeof(body),
         "{\"model\":\"%s\","
         "\"messages\":[{\"role\":\"system\",\"content\":\"%s\"},"
         "{\"role\":\"user\",\"content\":\"%s\"}]"
-        "%s,\"max_tokens\":1024}",
+        "%s,\"max_tokens\":%d}",
         model, esys, eusr,
-        req.want_json ? ",\"response_format\":{\"type\":\"json_object\"}" : "");
+        req.want_json ? ",\"response_format\":{\"type\":\"json_object\"}" : "",
+        max_tok);
     if (hlen <= 0 || (size_t)hlen >= sizeof(body)) { r.err = ERR_LIMIT; return r; }
 
     hlen = snprintf(reqbuf, sizeof(reqbuf),
         "POST /v1/chat/completions HTTP/1.0\r\n"
-        "Host: api.openai.com\r\n"
+        "Host: %s\r\n"
         "Authorization: Bearer %s\r\n"
         "Content-Type: application/json\r\n"
         "Content-Length: %d\r\n\r\n%s",
-        cfg->openai_key, (int)strlen(body), body);
+        host, cfg->openai_key, (int)strlen(body), body);
     if (hlen <= 0 || (size_t)hlen >= sizeof(reqbuf)) { r.err = ERR_LIMIT; return r; }
 
-    n = tls_request("api.openai.com", 443, reqbuf, (size_t)hlen,
-                    resp, sizeof(resp) - 1);
-    if (n < 0) { r.err = ERR_IO; return r; }
-    resp[n] = '\0';
-
-    r.status = (n > 9) ? atoi(resp + 9) : 0;
-    bodyp = strstr(resp, "\r\n\r\n");
-    bodyp = bodyp ? bodyp + 4 : resp;
-    if (r.status < 200 || r.status >= 300) { r.err = ERR_IO; return r; }
-
-    parse_content(bodyp, r.reply, sizeof(r.reply));
-    r.total_tokens = parse_total_tokens(bodyp);
-    r.err = ERR_OK;
+    for (attempt = 0; attempt <= retries; attempt++) {
+        ssize_t n;
+        const char *bodyp;
+        if (attempt > 0) {
+            teb_log_warn("llm", "retry %d/%d for %s", attempt, retries,
+                         req.prompt_name);
+            backoff_sleep(attempt - 1);
+        }
+        n = tls_request(host, 443, reqbuf, (size_t)hlen,
+                        resp, sizeof(resp) - 1);
+        if (n < 0) { r.err = ERR_IO; continue; }
+        resp[n] = '\0';
+        r.status = (n > 9) ? atoi(resp + 9) : 0;
+        bodyp = strstr(resp, "\r\n\r\n");
+        bodyp = bodyp ? bodyp + 4 : resp;
+        if (r.status == 429 || r.status >= 500) {
+            teb_log_warn("llm", "status %d from %s", r.status, host);
+            r.err = ERR_IO; continue;
+        }
+        if (r.status < 200 || r.status >= 300) { r.err = ERR_IO; return r; }
+        parse_content(bodyp, r.reply, sizeof(r.reply));
+        r.total_tokens = parse_total_tokens(bodyp);
+        r.err = ERR_OK;
+        teb_log_info("llm", "prompt=%s tokens=%d", req.prompt_name,
+                     r.total_tokens);
+        return r;
+    }
+    teb_log_error("llm", "exhausted %d retries for %s", retries,
+                  req.prompt_name);
     return r;
 }
 

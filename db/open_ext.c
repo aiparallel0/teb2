@@ -115,7 +115,9 @@ static const char *SCHEMA_C =
     "status TEXT NOT NULL DEFAULT 'pending',"
     "started_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
     "finished_at INTEGER NOT NULL DEFAULT 0,"
-    "error_msg TEXT NOT NULL DEFAULT '');"
+    "error_msg TEXT NOT NULL DEFAULT '',"
+    "pid INTEGER NOT NULL DEFAULT 0,"
+    "token_spend INTEGER NOT NULL DEFAULT 0);"
 
     "CREATE TABLE IF NOT EXISTS workflow_steps("
     "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -127,7 +129,13 @@ static const char *SCHEMA_C =
     "FOREIGN KEY (run_id) REFERENCES workflow_runs(id));"
 
     "CREATE VIRTUAL TABLE IF NOT EXISTS search_idx USING fts5("
-    "entity,entity_id UNINDEXED,content);";
+    "entity,entity_id UNINDEXED,content);"
+
+    "CREATE TABLE IF NOT EXISTS prompt_overrides("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "user_id TEXT NOT NULL,name TEXT NOT NULL,"
+    "body TEXT NOT NULL,updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
+    "UNIQUE(user_id,name));";
 
 static Err run_sql(sqlite3 *h, const char *sql)
 {

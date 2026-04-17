@@ -19,6 +19,32 @@
 
 #define MAX_TASKS 7
 
+/* Cycle detection on depends_on CSV indices. Returns 1 if cycle found. */
+static int has_cycle(const char *reply, const char *ps[MAX_TASKS],
+                     int es[MAX_TASKS], int n)
+{
+    char d[MAX_TASKS][128]; int i;
+    for (i = 0; i < n; i++) {
+        char o[1024]; size_t l = (size_t)es[i];
+        if (l >= sizeof(o)) l = sizeof(o) - 1;
+        memcpy(o, ps[i], l); o[l] = '\0';
+        d[i][0] = '\0'; (void)json_str(o, "depends_on", d[i], 128);
+    }
+    for (i = 0; i < n; i++) {
+        const char *p = d[i]; int dep;
+        while (*p) {
+            dep = atoi(p);
+            if (dep >= 0 && dep < n) {
+                const char *q = d[dep];
+                while (*q) { if (atoi(q) == i) return 1; while (*q && *q!=',') q++; if (*q==',') q++; }
+            }
+            while (*p && *p != ',') p++;
+            if (*p == ',') p++;
+        }
+    }
+    (void)reply; return 0;
+}
+
 /* Find a quoted string value after a key ("key":"value"). Returns 1 on success. */
 static int find_kv_str(const char *obj, const char *key, char *out, size_t osz)
 {
@@ -63,7 +89,6 @@ static int split_tasks(const char *reply, const char *pos[MAX_TASKS], int ends[M
     }
     return n;
 }
-
 AgentMsg decompose_handle(AgentMsg msg)
 {
     LlmReq   lreq;
@@ -90,6 +115,8 @@ AgentMsg decompose_handle(AgentMsg msg)
         return agent_make_result(msg, ERR_IO, "llm_error");
 
     n = split_tasks(lrep.reply, pos, ends);
+    if (has_cycle(lrep.reply, pos, ends, n))
+        return agent_make_result(msg, ERR_INVALID, "dag_cycle_detected");
     for (i = 0; i < n && msg.db; i++) {
         size_t ol = (size_t)ends[i];
         char deps[128], success[256];
@@ -111,9 +138,6 @@ AgentMsg decompose_handle(AgentMsg msg)
         tr = store_task(msg.db, tq);
         if (tr.err != ERR_OK) continue;
         stored++;
-        /* A1: persist the rest of the decomposition envelope fields
-         * into task_plan so HITL / DAG / budget / measure actually
-         * see what the prompt already asked the model to emit. */
         deps[0] = success[0] = '\0';
         (void)json_str(obj, "depends_on",       deps,    sizeof(deps));
         (void)json_str(obj, "success_criteria", success, sizeof(success));

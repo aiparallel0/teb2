@@ -14,9 +14,10 @@ typedef enum {
 typedef struct { unsigned char data[64]; size_t len; } Bytes;
 typedef struct { unsigned char k[8]; } Key8;
 typedef struct {
-    char db_path[256]; char secret[128]; int port;
+    char db_path[256]; char secret[128]; int port; int workers;
     char smtp_host[256]; int smtp_port; char smtp_user[128]; char smtp_pass[128];
-    char openai_key[128]; char openai_model[64]; int workers;
+    char openai_key[128]; char openai_model[64]; char llm_base_url[128];
+    int llm_max_tokens; int run_timeout_sec; int llm_retries;
 } Config;
 
 typedef struct {

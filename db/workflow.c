@@ -84,3 +84,30 @@ RunResult update_run_status(Db *db, int64_t run_id,
     sqlite3_finalize(s);
     return r;
 }
+
+Err update_run_pid(Db *db, int64_t run_id, int64_t pid)
+{
+    sqlite3_stmt *s = NULL;
+    const char *sql = "UPDATE workflow_runs SET pid=? WHERE id=?;";
+    if (!db || !db->handle) return ERR_DB;
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &s, NULL) != SQLITE_OK)
+        return ERR_DB;
+    sqlite3_bind_int64(s, 1, pid);
+    sqlite3_bind_int64(s, 2, run_id);
+    sqlite3_step(s); sqlite3_finalize(s);
+    return ERR_OK;
+}
+
+Err update_run_tokens(Db *db, int64_t run_id, int64_t tokens)
+{
+    sqlite3_stmt *s = NULL;
+    const char *sql =
+        "UPDATE workflow_runs SET token_spend=token_spend+? WHERE id=?;";
+    if (!db || !db->handle) return ERR_DB;
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &s, NULL) != SQLITE_OK)
+        return ERR_DB;
+    sqlite3_bind_int64(s, 1, tokens);
+    sqlite3_bind_int64(s, 2, run_id);
+    sqlite3_step(s); sqlite3_finalize(s);
+    return ERR_OK;
+}

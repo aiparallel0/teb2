@@ -6,11 +6,13 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <sys/time.h>
 #include <netinet/in.h>
 #include "core/types.h"
 #include "core/errors.h"
 #include "core/config.h"
+#include "core/log.h"
 #include "auth/auth.h"
 #include "db/db.h"
 #include "exec/exec.h"
@@ -32,19 +34,26 @@ static int is_sse_path(const char *path)
     return (strncmp(path, "/sse/", 5) == 0);
 }
 
+static void reap_children(int sig)
+{
+    (void)sig;
+    while (waitpid(-1, NULL, WNOHANG) > 0) ;
+}
+
 static void install_signals(void)
 {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = handle_signal;
     sigemptyset(&sa.sa_mask);
-    /* No SA_RESTART: accept() returns EINTR so the loop can observe
-     * g_running and shut down cleanly instead of blocking forever. */
-    sa.sa_flags = 0;
+    sa.sa_flags = 0; /* no SA_RESTART so accept() returns EINTR */
     (void)sigaction(SIGTERM, &sa, NULL);
     (void)sigaction(SIGINT,  &sa, NULL);
     signal(SIGPIPE, SIG_IGN);
-    signal(SIGCHLD, SIG_IGN);
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = reap_children;
+    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    (void)sigaction(SIGCHLD, &sa, NULL);
 }
 
 int main(int argc, char **argv)
@@ -72,6 +81,8 @@ int main(int argc, char **argv)
         return 1;
     }
     install_signals();
+    teb_log_info("main", "teb2 starting port=%d workers=%d timeout=%ds",
+                 cfg.port, cfg.workers, cfg.run_timeout_sec);
 
     srv = socket(AF_INET, SOCK_STREAM, 0);
     if (srv < 0) { db_close(&db); return 1; }
