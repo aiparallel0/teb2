@@ -55,7 +55,7 @@ them.
   is allowed; adding a new prompt inside an existing namespace is
   preferred when the shape fits.
 
-## Catalog (43 prompts)
+## Catalog (53 prompts)
 
 Run `make prompts` after adding or editing any file under `prompts/`.
 CI fails if the registry (`core/prompts.c` TABLE) and the directory
