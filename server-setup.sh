@@ -121,8 +121,8 @@ cd "$INSTALL_DIR"
 info "Step 4/9 — configure .env"
 
 if [[ ! -f .env ]]; then
-    cp .env.production .env
-    info "  Created .env from .env.production"
+    cp .env.production.example .env
+    info "  Created .env from .env.production.example"
 fi
 
 # Replace placeholder SECRET with a cryptographically random one
