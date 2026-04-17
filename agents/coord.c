@@ -50,6 +50,8 @@ AgentMsg coord_handle(AgentMsg msg)
     case MSG_PLUGIN:      return plugin_handle(msg);
     case MSG_OAUTH:       return oauth_handle(msg);
     case MSG_NOTIFY:      return outreach_handle(msg);
+    case MSG_EXEC_RUN:    return exec_handle(msg);
+    case MSG_ROUTE:       return router_handle(msg);
     }
     return unknown_msg(msg);
 }

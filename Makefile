@@ -24,6 +24,7 @@ SRCS = core/config.c core/ratelimit.c core/llm.c core/prompts.c core/sanitize.c 
 	     agents/coord.c agents/clarify.c agents/finance.c agents/outreach.c \
 	     agents/research.c agents/measure.c agents/learn.c agents/util.c \
 	     agents/decompose.c agents/plugin.c agents/oauth.c \
+	     agents/exec.c agents/router.c \
 	     api/server.c api/json.c api/escape.c api/goals.c api/tasks.c \
 	     api/auth.c api/outcomes.c api/nudges.c api/learn.c api/exec.c \
 	     api/decompose.c api/schedules.c api/budgets.c api/routes.c \

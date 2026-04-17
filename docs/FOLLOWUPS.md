@@ -7,15 +7,15 @@ architectural decision or a dependency the current PR cannot justify.
 Phases below use the letters from the audit/plan so reviewers can trace
 back to the original gap.
 
-## Phase D — Router promotion to a first-class agent
+## Phase D — Router promotion to a first-class agent *(partial — callable, not mandatory)*
 
-Today `decompose` asks the LLM to choose an `agent` per task directly.
-The plan calls for a separate `router.md` classifier invoked after
-decomposition, so every task gets a second opinion and a confidence
-score. The prompt is already committed in `prompts/router.md`; the
-runtime wiring (a per-task `router_handle` call from `coord.c`) is
-deferred because it changes the run-loop contract and deserves its own
-review.
+Done in this PR: `agents/router.c::router_handle` exists and is
+dispatched via `MSG_ROUTE` in `agents/coord.c`. Callers (including
+future `decompose` extensions) can now invoke it for a second
+opinion. **Still deferred**: having `decompose` automatically
+consult it on low-confidence routes. That changes the decompose
+loop's control flow (retry-on-disagreement, token budget) and
+deserves a focused PR with its own eval.
 
 ## Phase E — Grounded research
 
@@ -79,9 +79,36 @@ are a larger feature — they need:
 ## Phase J-full — Golden-set LLM evals
 
 `evals/run.sh` currently runs only shape checks against
-`evals/mock_llm.py`. A real eval harness needs:
+`evals/mock_llm.py` (now covering all 43 prompts). A real eval
+harness needs:
 
 - `evals/goals.jsonl` extended with expected envelopes.
 - A runner that calls the real LLM, scores outputs against a rubric,
   and writes a per-agent JSON report.
 - CI integration gated on score regression, not just build success.
+
+## ~~Phase X — `exec` dead-letter bug~~ *(closed in this PR)*
+
+Previously `decompose` could emit `agent="exec"` but `coord.c`
+collapsed every `MSG_EXEC_REQ` to `research_handle`, so "exec",
+"finance", "outreach", and "browser" tasks all silently ran the
+research prompt. Fixed by routing in `api/exec.c` using the task's
+`agent` field and dispatching `MSG_EXEC_RUN` →
+`agents/exec.c::exec_handle`.
+
+## ~~Phase Y — Anaemic prompt library~~ *(closed in this PR)*
+
+The library grew from 13 prompts to 43 across 10 namespaces
+(`system`, loop, `exec.*`, `outreach.*`, `finance.*`, `plugin.*`,
+`data.*`, `meeting.*`, `doc.*`, `triage.*`). Every prompt follows
+the 8-section catalog mandated by `docs/PROMPTS.md`. Existing
+prompts were backfilled with the previously-missing
+`Injection hardening` and `Refusal` sections.
+
+## Phase Z — Browser driver
+
+`exec/browser_spawn.c` spawns a Node subprocess, but no Playwright
+worker is actually bundled in the repo. `browse.md` is a committed
+prompt with no runtime. Shipping this safely needs the worker code,
+a sandbox policy, and a `--requires_confirmation` gate before any
+write-action is executed.

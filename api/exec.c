@@ -57,7 +57,18 @@ HttpResp handle_exec_run(HttpReq req, Ctx *ctx)
     ensure_browser();
 
     memset(&in, 0, sizeof(in));
-    in.tag = MSG_EXEC_REQ;
+    /* Route by the agent the decompose phase chose. Previously every
+     * task ran as MSG_EXEC_REQ and coord.c collapsed that onto
+     * research_handle, so "exec" / "finance" / "outreach" / "browser"
+     * tasks all silently ran the research prompt. */
+    {
+        const char *a = tr.rows[0].agent;
+        if      (strcmp(a, "finance")  == 0) in.tag = MSG_FINANCE_REQ;
+        else if (strcmp(a, "outreach") == 0) in.tag = MSG_NOTIFY;
+        else if (strcmp(a, "exec")     == 0) in.tag = MSG_EXEC_RUN;
+        else if (strcmp(a, "browser")  == 0) in.tag = MSG_EXEC_RUN;
+        else                                 in.tag = MSG_EXEC_REQ; /* research */
+    }
     in.id  = tr.rows[0].id;
     in.db  = ctx->db;
     in.cfg = ctx->cfg;
