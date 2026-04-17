@@ -12,6 +12,7 @@ typedef struct {
     char user[1024];        /* untrusted user text; caller must sanitize */
     char context[1536];     /* trusted extra context (snippets, prior learnings) */
     int  want_json;         /* 1 ⇒ request JSON object response_format */
+    int  max_tokens;        /* per-call override; 0 ⇒ use cfg->llm_max_tokens */
 } LlmReq;
 
 typedef struct {

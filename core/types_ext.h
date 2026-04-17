@@ -156,4 +156,11 @@ typedef struct {
 typedef struct { int64_t task_id; TaskPlan plan; } TaskPlanQuery;
 typedef struct { Err err; TaskPlan plan; } TaskPlanResult;
 
+/* --- prompt_overrides: per-user runtime prompt customization --- */
+typedef struct {
+    int64_t id; char user_id[64]; char name[64]; char body[4096]; int64_t updated_at;
+} PromptOverride;
+typedef struct { int64_t id; char user_id[64]; char name[64]; char body[4096]; } OverrideQuery;
+typedef struct { Err err; PromptOverride ov; } OverrideResult;
+
 #endif /* TYPES_EXT_H */

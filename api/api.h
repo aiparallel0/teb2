@@ -121,7 +121,14 @@ HttpResp handle_notify_email(HttpReq req, Ctx *ctx);
 
 /* api/workflow.c */
 HttpResp handle_run_create(HttpReq req, Ctx *ctx);
+
+/* api/run_cancel.c */
 HttpResp handle_run_get(HttpReq req, Ctx *ctx);
+HttpResp handle_run_cancel(HttpReq req, Ctx *ctx);
+
+/* api/prompt_edit.c */
+HttpResp handle_prompt_edit(HttpReq req, Ctx *ctx);
+HttpResp handle_prompt_delete(HttpReq req, Ctx *ctx);
 
 /* api/search.c */
 HttpResp handle_search(HttpReq req, Ctx *ctx);

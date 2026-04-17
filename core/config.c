@@ -46,6 +46,14 @@ static void apply_env_line(const char *line, Config *cfg)
         copy_strip(cfg->openai_key, sizeof(cfg->openai_key), eq + 1);
     else if (strcmp(key, "OPENAI_MODEL") == 0)
         copy_strip(cfg->openai_model, sizeof(cfg->openai_model), eq + 1);
+    else if (strcmp(key, "LLM_BASE_URL") == 0)
+        copy_strip(cfg->llm_base_url, sizeof(cfg->llm_base_url), eq + 1);
+    else if (strcmp(key, "LLM_MAX_TOKENS") == 0)
+        cfg->llm_max_tokens = atoi(eq + 1);
+    else if (strcmp(key, "LLM_RETRIES") == 0)
+        cfg->llm_retries = atoi(eq + 1);
+    else if (strcmp(key, "RUN_TIMEOUT_SEC") == 0)
+        cfg->run_timeout_sec = atoi(eq + 1);
     else if (strcmp(key, "WORKERS") == 0)
         cfg->workers = atoi(eq + 1);
 }
@@ -64,6 +72,10 @@ Config load_config(const char *env_path)
     snprintf(cfg.db_path,      sizeof(cfg.db_path),      "%s", "teb2.db");
     snprintf(cfg.secret,       sizeof(cfg.secret),       "%s", "change_me_in_production");
     snprintf(cfg.openai_model, sizeof(cfg.openai_model), "%s", "gpt-4o-mini");
+    snprintf(cfg.llm_base_url, sizeof(cfg.llm_base_url), "%s", "api.openai.com");
+    cfg.llm_max_tokens = 1024;
+    cfg.llm_retries = 3;
+    cfg.run_timeout_sec = 300;
 
     f = fopen(env_path, "r");
     if (f) {
@@ -81,6 +93,10 @@ Config load_config(const char *env_path)
     if ((v = getenv("SMTP_PASS")))      snprintf(cfg.smtp_pass,    sizeof(cfg.smtp_pass),     "%s", v);
     if ((v = getenv("OPENAI_API_KEY"))) snprintf(cfg.openai_key,   sizeof(cfg.openai_key),    "%s", v);
     if ((v = getenv("OPENAI_MODEL")))   snprintf(cfg.openai_model, sizeof(cfg.openai_model),  "%s", v);
+    if ((v = getenv("LLM_BASE_URL")))  snprintf(cfg.llm_base_url, sizeof(cfg.llm_base_url),  "%s", v);
+    if ((v = getenv("LLM_MAX_TOKENS")))cfg.llm_max_tokens = atoi(v);
+    if ((v = getenv("LLM_RETRIES")))   cfg.llm_retries = atoi(v);
+    if ((v = getenv("RUN_TIMEOUT_SEC")))cfg.run_timeout_sec = atoi(v);
     if ((v = getenv("WORKERS")))        cfg.workers = atoi(v);
 
     return cfg;

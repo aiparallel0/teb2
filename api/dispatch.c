@@ -91,6 +91,9 @@ static HttpResp dispatch_core(HttpReq req, Ctx *ctx)
 static HttpResp dispatch_internal(HttpReq req, Ctx *ctx)
 {
     const char *rlkey;
+    /* 413: body saturated the buffer — reject mutating requests */
+    if (is_mutating(req.method) && req.body_len >= sizeof(req.body) - 1)
+        return json_error(413, "payload_too_large");
     if (strcmp(req.method, "OPTIONS") == 0) return options_resp();
     if (strcmp(req.method, "GET") == 0) {
         HttpResp ui = dispatch_ui(req, ctx);

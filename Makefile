@@ -11,11 +11,12 @@ LDFLAGS = -lsqlite3 -lcrypt -lssl -lcrypto
 PROMPT_SRCS := $(wildcard core/pd/*.c)
 
 SRCS = core/config.c core/ratelimit.c core/llm.c core/prompts.c core/sanitize.c \
+	     core/log.c \
 	     $(PROMPT_SRCS) \
 	     auth/hash.c auth/token.c auth/rbac.c auth/sha256.c \
 	     db/open.c db/open_ext.c db/goals.c db/tasks.c db/users.c \
 	     db/outcomes.c db/nudges.c db/learn.c db/schedules.c db/budgets.c \
-	     db/approvals.c db/task_plan.c \
+	     db/approvals.c db/task_plan.c db/prompt_override.c \
 	     db/memory.c db/collab.c db/chat.c db/integrations.c db/enterprise.c \
 	     db/analytics.c db/gamification.c db/community.c \
 	     db/assets.c db/workflow.c db/wf_steps.c db/search.c db/audit.c \
@@ -28,10 +29,11 @@ SRCS = core/config.c core/ratelimit.c core/llm.c core/prompts.c core/sanitize.c 
 	     api/server.c api/json.c api/escape.c api/goals.c api/tasks.c \
 	     api/auth.c api/outcomes.c api/nudges.c api/learn.c api/exec.c \
 	     api/decompose.c api/schedules.c api/budgets.c api/routes.c \
-	     api/approvals.c api/prompts.c \
+	     api/approvals.c api/prompts.c api/prompt_edit.c \
 	     api/collab.c api/integrations.c api/enterprise.c api/analytics.c \
 	     api/gamification.c api/community.c api/sse.c \
-	     api/assets.c api/notify.c api/workflow.c api/search.c \
+	     api/assets.c api/notify.c api/workflow.c api/run_cancel.c \
+	     api/search.c \
 	     api/metrics.c api/oauth.c api/static.c api/limits.c \
 	     api/dispatch.c \
 	     main.c

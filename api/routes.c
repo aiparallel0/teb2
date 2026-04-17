@@ -48,6 +48,10 @@ HttpResp dispatch_ext(HttpReq req, Ctx *ctx)
         return handle_prompt_list(req, ctx);
     if (strncmp(p, "/prompts/", 9) == 0 && strcmp(req.method, "GET") == 0)
         return handle_prompt_get(req, ctx);
+    if (strncmp(p, "/prompts/", 9) == 0 && strcmp(req.method, "PUT") == 0)
+        return handle_prompt_edit(req, ctx);
+    if (strncmp(p, "/prompts/", 9) == 0 && strcmp(req.method, "DELETE") == 0)
+        return handle_prompt_delete(req, ctx);
     if (strcmp(p, "/schedules") == 0 && strcmp(req.method, "POST") == 0)
         return handle_sched_create(req, ctx);
     if (strncmp(p, "/schedules/", 11) == 0 && strcmp(req.method, "GET") == 0)
@@ -122,6 +126,8 @@ HttpResp dispatch_ext(HttpReq req, Ctx *ctx)
         return handle_notify_email(req, ctx);
     if (strcmp(p, "/runs") == 0 && strcmp(req.method, "POST") == 0)
         return handle_run_create(req, ctx);
+    if (strncmp(p, "/runs/", 6) == 0 && strcmp(req.method, "POST") == 0)
+        return handle_run_cancel(req, ctx);
     if (strncmp(p, "/runs/", 6) == 0 && strcmp(req.method, "GET") == 0)
         return handle_run_get(req, ctx);
     if (strncmp(p, "/search", 7) == 0 && strcmp(req.method, "GET") == 0)
