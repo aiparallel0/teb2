@@ -37,7 +37,7 @@ function render_list(r) {
 
 function load_body(name) {
     /* prompts return text/plain; teb.api parses JSON, so use fetch directly. */
-    fetch("/prompts/" + encodeURIComponent(name), {
+    fetch(teb.base + "/prompts/" + encodeURIComponent(name), {
         credentials: "same-origin",
         headers: teb.auth_headers ? teb.auth_headers() : {}
     }).then(function (res) {

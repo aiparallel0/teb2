@@ -1,0 +1,26 @@
+# ops/portearchive/compose.yml
+#
+# Docker-compose OVERRIDE for the portearchive.com droplet. Merge with
+# the root docker-compose.yml; only start the `app` service:
+#
+#     docker compose \
+#       -f docker-compose.yml \
+#       -f ops/portearchive/compose.yml \
+#       up -d --build app
+#
+# The base compose also defines an `nginx` service that binds host
+# ports 80/443. We do NOT start it on this droplet — the host nginx
+# already owns 80/443 and routes /teb and /fixie. Because nothing in
+# `app` depends on `nginx`, omitting `nginx` from the `up` argv is
+# sufficient; no service-disabling hack is required.
+#
+# What this override changes vs. the base:
+#   - Adds a stable container_name (for `docker exec`, backups, logs).
+#   - Publishes the app to 127.0.0.1:${TEB2_LOOPBACK_PORT} ONLY, so the
+#     host nginx can proxy to it but the public internet cannot.
+
+services:
+  app:
+    container_name: teb2-app
+    ports:
+      - "127.0.0.1:${TEB2_LOOPBACK_PORT:-18082}:8080"
