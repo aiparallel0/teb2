@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 
     cfg = load_config(argc > 1 ? argv[1] : ".env");
     if (db_open(cfg.db_path, &db) != ERR_OK) {
-        fprintf(stderr, "db_open failed\n");
+        fprintf(stderr, "db_open failed: %s\n", cfg.db_path);
         return 1;
     }
     signal(SIGTERM, handle_signal);
