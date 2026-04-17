@@ -4,14 +4,17 @@
 #include "core/types.h"
 #include "core/errors.h"
 #include "auth/auth.h"
+#include "auth/sha256.h"
 
 #define TOKEN_TTL 3600L
 
-#ifdef TEB2_MODERN
-#include "auth/sha256.h"
 /*
  * HMAC-SHA256 MAC over ticket fields + secret.
  * Produces a full 32-byte MAC stored in ticket.mac[32].
+ *
+ * The previous XOR-fold fallback was deleted: it was not cryptographic
+ * and could ship silently if -DTEB2_MODERN was missing. HMAC is now the
+ * only path. The Makefile no longer needs TEB2_MODERN as a gate.
  */
 static void compute_mac(int64_t user_id, UserRole role, int64_t expiry,
                         const char *secret, unsigned char mac[32])
@@ -24,27 +27,6 @@ static void compute_mac(int64_t user_id, UserRole role, int64_t expiry,
     sha256_hmac((const unsigned char *)secret, strlen(secret),
                 data, sizeof(data), mac);
 }
-#else
-/*
- * Legacy XOR-fold MAC.  NOT cryptographic — use -DTEB2_MODERN for
- * HMAC-SHA256.  Kept for backward compatibility on constrained builds.
- */
-static void compute_mac(int64_t user_id, UserRole role, int64_t expiry,
-                        const char *secret, unsigned char mac[32])
-{
-    unsigned char buf[32];
-    size_t i, slen = strlen(secret);
-    memset(mac, 0, 32);
-    memset(buf, 0, sizeof(buf));
-    memcpy(buf,      &user_id, sizeof(user_id));
-    memcpy(buf + 8,  &role,    sizeof(role));
-    memcpy(buf + 12, &expiry,  sizeof(expiry));
-    for (i = 0; i < slen && i < sizeof(buf); i++)
-        buf[i % sizeof(buf)] ^= (unsigned char)secret[i];
-    for (i = 0; i < 8; i++)
-        mac[i] = buf[i] ^ buf[i + 8] ^ buf[i + 16] ^ buf[i + 24];
-}
-#endif
 
 TokenResult make_ticket(UserClaims claims, const char *secret)
 {

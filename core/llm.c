@@ -10,6 +10,7 @@
 #include "core/log.h"
 #include "exec/exec.h"
 #include "db/db.h"
+#include "api/api.h"
 
 /* Static buffers — safe because each worker is single-threaded. */
 #define REQ_CAP  49152u
@@ -33,7 +34,6 @@ static void esc_json(const char *src, char *dst, size_t dsz)
     }
     dst[o] = '\0';
 }
-
 static void parse_content(const char *body, char *out, size_t osz)
 {
     const char *p = strstr(body, "\"content\"");
@@ -55,7 +55,6 @@ static void parse_content(const char *body, char *out, size_t osz)
     }
     out[i] = '\0';
 }
-
 static int parse_total_tokens(const char *body)
 {
     const char *p = strstr(body, "\"total_tokens\"");
@@ -64,7 +63,6 @@ static int parse_total_tokens(const char *body)
     while (*p == ' ' || *p == ':') p++;
     return atoi(p);
 }
-
 static void build_system(const LlmReq *req, char *out, size_t osz)
 {
     const char *pe = prompt_get("system/persona");
@@ -77,7 +75,6 @@ static void build_system(const LlmReq *req, char *out, size_t osz)
         req->context[0] ? req->context : "");
     if (n < 0 || (size_t)n >= osz) out[osz - 1] = '\0';
 }
-
 /* Jittered backoff: 1s, 2s, 4s with ±25% jitter */
 static void backoff_sleep(int attempt)
 {
@@ -100,7 +97,6 @@ LlmReply llm_call(LlmReq req, Config *cfg)
 
     memset(&r, 0, sizeof(r));
     if (!cfg || !cfg->openai_key[0]) { r.err = ERR_IO; return r; }
-
     build_system(&req, sysraw, sizeof(sysraw));
     esc_json(sysraw, esys, sizeof(esys));
     esc_json(req.user, eusr, sizeof(eusr));
@@ -132,13 +128,20 @@ LlmReply llm_call(LlmReq req, Config *cfg)
     for (attempt = 0; attempt <= retries; attempt++) {
         ssize_t n;
         const char *bodyp;
+        struct timespec t0, t1;
+        long latency_ms;
         if (attempt > 0) {
-            teb_log_warn("llm", "retry %d/%d for %s", attempt, retries,
-                         req.prompt_name);
+            teb_log_warn("llm", "retry %d/%d for %s",
+                         attempt, retries, req.prompt_name);
             backoff_sleep(attempt - 1);
         }
+        clock_gettime(CLOCK_MONOTONIC, &t0);
         n = tls_request(host, 443, reqbuf, (size_t)hlen,
                         resp, sizeof(resp) - 1);
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        latency_ms = (long)(t1.tv_sec - t0.tv_sec) * 1000L
+                     + (long)(t1.tv_nsec - t0.tv_nsec) / 1000000L;
+        if (latency_ms < 0) latency_ms = 0;
         if (n < 0) { r.err = ERR_IO; continue; }
         resp[n] = '\0';
         r.status = (n > 9) ? atoi(resp + 9) : 0;
@@ -152,12 +155,12 @@ LlmReply llm_call(LlmReq req, Config *cfg)
         parse_content(bodyp, r.reply, sizeof(r.reply));
         r.total_tokens = parse_total_tokens(bodyp);
         r.err = ERR_OK;
-        teb_log_info("llm", "prompt=%s tokens=%d", req.prompt_name,
-                     r.total_tokens);
+        metrics_observe_llm((long)r.total_tokens, latency_ms);
+        teb_log_info("llm", "prompt=%s tokens=%d latency_ms=%ld",
+                     req.prompt_name, r.total_tokens, latency_ms);
         return r;
     }
-    teb_log_error("llm", "exhausted %d retries for %s", retries,
-                  req.prompt_name);
+    teb_log_error("llm", "exhausted %d retries for %s",
+                  retries, req.prompt_name);
     return r;
 }
-

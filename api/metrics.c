@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <sqlite3.h>
 #include "core/types.h"
 #include "api/api.h"
 #include "api/json.h"
@@ -12,6 +13,18 @@ typedef struct { char method[8]; char path[32]; int status; long count; } Metric
 static MetricBucket mb[METRIC_SLOTS];
 static int mb_count;
 static long mb_overflow;
+/* Phase 9: LLM call aggregates, updated by core/llm.c via
+ * metrics_observe_llm(tokens, latency_ms). Exposed on /metrics. */
+static long llm_calls_total;
+static long llm_tokens_total;
+static long long llm_latency_sum_ms;
+
+void metrics_observe_llm(long tokens, long latency_ms)
+{
+    llm_calls_total++;
+    if (tokens > 0) llm_tokens_total += tokens;
+    if (latency_ms > 0) llm_latency_sum_ms += latency_ms;
+}
 
 void metrics_inc(const char *method, const char *path, int status)
 {
@@ -35,11 +48,25 @@ void metrics_inc(const char *method, const char *path, int status)
     }
 }
 
+/* Phase 9: /healthz now probes the DB with a trivial SELECT 1 so a
+ * wedged SQLite file makes the endpoint fail. Returns 503 on probe
+ * failure; Kubernetes / nginx upstream checks treat that as unhealthy. */
 HttpResp handle_healthz(HttpReq req, Ctx *ctx)
 {
-    char buf[128];
-    (void)req; (void)ctx;
-    snprintf(buf, sizeof(buf), "{\"status\":\"ok\",\"ts\":%lld}",
+    char buf[192];
+    int db_ok = 0;
+    (void)req;
+    if (ctx && ctx->db && ctx->db->handle) {
+        sqlite3_stmt *s = NULL;
+        if (sqlite3_prepare_v2(ctx->db->handle, "SELECT 1;",
+                               -1, &s, NULL) == SQLITE_OK) {
+            db_ok = (sqlite3_step(s) == SQLITE_ROW);
+            sqlite3_finalize(s);
+        }
+    }
+    if (!db_ok) return json_error(503, "db_unreachable");
+    snprintf(buf, sizeof(buf),
+             "{\"status\":\"ok\",\"db\":\"ok\",\"ts\":%lld}",
              (long long)time(NULL));
     return json_ok(buf);
 }
@@ -63,6 +90,15 @@ HttpResp handle_metrics(HttpReq req, Ctx *ctx)
     if (mb_overflow > 0) {
         int w = snprintf(resp.body + off, sizeof(resp.body) - (size_t)off,
             "teb_routes_dropped_total %ld\n", mb_overflow);
+        if (w > 0 && (size_t)(off + w) < sizeof(resp.body))
+            off += w;
+    }
+    {
+        int w = snprintf(resp.body + off, sizeof(resp.body) - (size_t)off,
+            "teb2_llm_calls_total %ld\n"
+            "teb2_llm_tokens_total %ld\n"
+            "teb2_llm_latency_ms_sum %lld\n",
+            llm_calls_total, llm_tokens_total, llm_latency_sum_ms);
         if (w > 0 && (size_t)(off + w) < sizeof(resp.body))
             off += w;
     }

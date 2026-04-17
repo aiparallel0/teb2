@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>teb2</title><link rel="stylesheet" href="/style.css">
+<title>teb2 — alpha preview</title><link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header><h1>teb2</h1>
+<header><h1>teb2 <span class="alpha">alpha</span></h1>
+<div class="banner">Developer preview. Features not yet shipped are tracked in <a href="https://github.com/aiparallel0/teb2/blob/main/docs/FOLLOWUPS.md" target="_blank" rel="noopener">docs/FOLLOWUPS.md</a>.</div>
 <div id="auth-bar"><span id="health"></span>
 <input id="email" type="text" placeholder="email">
 <input id="password" type="password" placeholder="password">
@@ -150,6 +151,12 @@
 <div class="row"><button class="btn btn-blue" onclick="load_prompts()">Load</button></div>
 <div id="prompt-list"></div></div></div>
 </main>
+<footer class="site-foot">
+  teb2 alpha ·
+  <a href="https://github.com/aiparallel0/teb2" target="_blank" rel="noopener">source</a> ·
+  <a href="https://github.com/aiparallel0/teb2/blob/main/docs/FOLLOWUPS.md" target="_blank" rel="noopener">roadmap</a> ·
+  auth uses HMAC-SHA256 tickets (not JWT)
+</footer>
 <script src="/app.js"></script><script src="/goals.js"></script>
 <script src="/tasks.js"></script><script src="/finance.js"></script>
 <script src="/collab.js"></script><script src="/dash.js"></script>

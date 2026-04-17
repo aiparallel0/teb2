@@ -111,3 +111,19 @@ Err update_run_tokens(Db *db, int64_t run_id, int64_t tokens)
     sqlite3_step(s); sqlite3_finalize(s);
     return ERR_OK;
 }
+
+/* Phase 3 — return the stored PID of the running child, or 0 if none /
+ * run not found. Caller uses this to send SIGTERM on /runs/<id>/cancel. */
+int64_t fetch_run_pid(Db *db, int64_t run_id)
+{
+    sqlite3_stmt *s = NULL;
+    int64_t pid = 0;
+    const char *sql = "SELECT pid FROM workflow_runs WHERE id=? LIMIT 1;";
+    if (!db || !db->handle) return 0;
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &s, NULL) != SQLITE_OK)
+        return 0;
+    sqlite3_bind_int64(s, 1, run_id);
+    if (sqlite3_step(s) == SQLITE_ROW) pid = sqlite3_column_int64(s, 0);
+    sqlite3_finalize(s);
+    return pid;
+}

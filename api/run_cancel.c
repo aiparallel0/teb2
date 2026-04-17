@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <errno.h>
 #include "core/types.h"
 #include "core/types_ext.h"
 #include "core/errors.h"
@@ -48,21 +49,23 @@ HttpResp handle_run_cancel(HttpReq req, Ctx *ctx)
     if (strcmp(rr.run.status, "running") != 0)
         return json_error(409, "not_running");
 
-    /* read PID from workflow_runs; kill if positive */
-    /* PID column added by schema migration in open_ext.c */
-    pid = 0;
-    {
-        /* fetch pid via direct SQL — avoid adding to run struct */
-        char pidstr[32] = "";
-        (void)pidstr;
-        /* Use the status field for now; actual PID stored in row */
+    /* Phase 3: read PID from workflow_runs and send SIGTERM to the
+     * child process group. The child has alarm()+signal handler
+     * installed so SIGTERM unwinds cleanly; the SIGCHLD reaper in
+     * main.c::install_signals() prevents zombies. */
+    pid = fetch_run_pid(ctx->db, rq.id);
+    if (pid > 0) {
+        if (kill((pid_t)pid, SIGTERM) != 0) {
+            teb_log_warn("workflow",
+                         "run %lld SIGTERM failed pid=%lld errno=%d(%s)",
+                         (long long)rq.id, (long long)pid,
+                         errno, strerror(errno));
+        }
     }
-    /* Send SIGTERM to child process group */
-    (void)pid;
 
     rr = update_run_status(ctx->db, rq.id, "cancelled", "cancelled by user");
-    teb_log_info("workflow", "run %lld cancelled by user %s",
-                 (long long)rq.id, uid);
+    teb_log_info("workflow", "run %lld cancelled by user %s pid=%lld",
+                 (long long)rq.id, uid, (long long)pid);
 
     snprintf(buf, sizeof(buf),
              "{\"run_id\":%lld,\"status\":\"cancelled\"}",

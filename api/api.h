@@ -135,6 +135,7 @@ HttpResp handle_search(HttpReq req, Ctx *ctx);
 
 /* api/metrics.c */
 void     metrics_inc(const char *method, const char *path, int status);
+void     metrics_observe_llm(long tokens, long latency_ms);
 HttpResp handle_healthz(HttpReq req, Ctx *ctx);
 HttpResp handle_metrics(HttpReq req, Ctx *ctx);
 
