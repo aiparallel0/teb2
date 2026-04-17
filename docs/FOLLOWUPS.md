@@ -105,13 +105,38 @@ real eval harness still needs:
 - OWASP LLM top-10 red-team corpus replayed against every prompt on
   every PR.
 
-## Phase H — Prompt library toward n8n/Notion bar *(partial in this PR)*
+## Phase H — Prompt library toward n8n/Notion bar *(advanced in this PR)*
 
-Partial in this PR: added `persona.onboarding`, `memory.compact`,
-`learn.dedup`, `decompose.critic`, `measure.critic`, `kb.qa`,
-`planner.weekly`, `report.weekly`, `outreach.escalation`, `code.debug`
-— pushing the library from 43 to 53 prompts. Added `## Tool manifest`
-sections to the core-loop prompts. Still needed:
+Previously: added `persona.onboarding`, `memory.compact`, `learn.dedup`,
+`decompose.critic`, `measure.critic`, `kb.qa`, `planner.weekly`,
+`report.weekly`, `outreach.escalation`, `code.debug` — pushing the
+library from 43 to 53 prompts and introducing the `## Tool manifest`
+section.
+
+This PR adds **24 more prompts** (53 → 77) covering the
+workflow domains users would otherwise reach for n8n / Zapier /
+Notion-templates to solve:
+
+- `sales.qualify`, `sales.account_research`
+- `marketing.seo_brief`, `marketing.ad_variants`, `marketing.social_thread`
+- `product.user_story`, `product.prioritize_rice`, `product.release_notes`
+- `hr.resume_screen`, `hr.interview_questions`
+- `legal.contract_review`
+- `ops.incident_postmortem`, `ops.runbook_draft`, `ops.log_triage`
+- `code.test_gen`, `code.pr_description`, `code.commit_msg`
+- `safety.injection_detect`
+- `data.entity_extract`, `data.anomaly_detect`
+- `integration.field_map`, `integration.webhook_transform`
+- `email.thread_summary`, `task.prioritize_eisenhower`
+
+Each new prompt follows the established template (Role / Input /
+JSON Output / Rules / Example / Anti-example / Refusal / Injection
+hardening / Tool manifest), and each ships the safety-critical ones
+(HR, legal, safety, postmortem, ad variants) with red-team fixtures
+under `evals/redteam/new_prompts.jsonl`. See
+`docs/PROMPT_CATALOG.md` for a workflow-oriented index.
+
+Still needed:
 
 - Expand every prompt to 150–250 lines with 5+ worked examples, a
   failure-mode catalogue, and a JSON-Schema block.
