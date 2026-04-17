@@ -85,3 +85,24 @@ Config load_config(const char *env_path)
 
     return cfg;
 }
+
+/*
+ * Fail-closed startup validation. Required secrets must be present and
+ * non-default. Returns ERR_AUTH on missing/default SECRET, ERR_IO on
+ * malformed numeric fields. main.c must abort startup if this returns
+ * anything other than ERR_OK.
+ */
+Err validate_config(const Config *cfg)
+{
+    size_t slen;
+    if (!cfg) return ERR_IO;
+    if (!cfg->db_path[0]) return ERR_IO;
+    if (cfg->port <= 0 || cfg->port > 65535) return ERR_IO;
+    if (cfg->workers < 1 || cfg->workers > 1024) return ERR_IO;
+    slen = strlen(cfg->secret);
+    if (slen < 32) return ERR_AUTH;
+    if (strcmp(cfg->secret, "change_me_in_production") == 0) return ERR_AUTH;
+    if (strcmp(cfg->secret, "CHANGE_ME_TO_A_RANDOM_SECRET") == 0)
+        return ERR_AUTH;
+    return ERR_OK;
+}

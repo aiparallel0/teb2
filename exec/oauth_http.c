@@ -10,9 +10,9 @@
 
 static const char *token_url(const char *p)
 {
-    if (strcmp(p, "google") == 0) return "http://accounts.google.com/o/oauth2/token";
-    if (strcmp(p, "github") == 0) return "http://github.com/login/oauth/access_token";
-    if (strcmp(p, "slack") == 0)  return "http://slack.com/api/oauth.v2.access";
+    if (strcmp(p, "google") == 0) return "https://oauth2.googleapis.com/token";
+    if (strcmp(p, "github") == 0) return "https://github.com/login/oauth/access_token";
+    if (strcmp(p, "slack") == 0)  return "https://slack.com/api/oauth.v2.access";
     return "";
 }
 

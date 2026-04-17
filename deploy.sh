@@ -28,13 +28,17 @@ check_deps() {
 
 ensure_env() {
     if [ ! -f .env ]; then
-        if [ -f .env.production ]; then
-            cp .env.production .env
-            echo "Created .env from .env.production — edit before running."
+        if [ -f .env.production.example ]; then
+            cp .env.production.example .env
+            echo "Created .env from .env.production.example — edit before running." >&2
+            echo "In particular, set SECRET to a random 32+ character string." >&2
+            exit 1
+        elif [ -f .env.example ]; then
+            cp .env.example .env
+            echo "Created .env from .env.example — edit before running." >&2
             exit 1
         else
-            cp .env.example .env
-            echo "Created .env from .env.example — edit before running."
+            echo "Error: no .env template found." >&2
             exit 1
         fi
     fi

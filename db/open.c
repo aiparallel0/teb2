@@ -86,7 +86,18 @@ static const char *SCHEMA =
     "key TEXT NOT NULL,"
     "val TEXT NOT NULL DEFAULT '',"
     "ts INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
-    "UNIQUE(agent,key));";
+    "UNIQUE(agent,key));"
+
+    "CREATE TABLE IF NOT EXISTS audit_log("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "user_id TEXT NOT NULL DEFAULT '',"
+    "action TEXT NOT NULL,"
+    "path TEXT NOT NULL,"
+    "status INTEGER NOT NULL,"
+    "src_ip TEXT NOT NULL DEFAULT '',"
+    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));"
+    "CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id);"
+    "CREATE INDEX IF NOT EXISTS idx_audit_ts   ON audit_log(created_at);";
 
 Err db_open(const char *path, Db *out)
 {

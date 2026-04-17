@@ -1,6 +1,7 @@
 #ifndef API_H
 #define API_H
 
+#include <sys/types.h>
 #include "core/types.h"
 
 /* HttpReq.body max is 8191 bytes; larger payloads are truncated. */
@@ -9,6 +10,11 @@
 HttpReq  parse_request(const char *raw, size_t len);
 HttpResp dispatch(HttpReq req, Ctx *ctx);
 void     write_response(int fd, HttpResp resp);
+
+/* api/limits.c */
+void     socket_set_deadlines(int fd, int read_sec, int write_sec);
+ssize_t  slowloris_read(int fd, char *buf, size_t cap, int deadline_sec)
+    __attribute__((warn_unused_result));
 
 /* api/goals.c */
 HttpResp handle_goal_create(HttpReq req, Ctx *ctx);
