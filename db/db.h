@@ -135,5 +135,7 @@ Err update_run_pid(Db *db, int64_t run_id, int64_t pid)
     __attribute__((warn_unused_result));
 Err update_run_tokens(Db *db, int64_t run_id, int64_t tokens)
     __attribute__((warn_unused_result));
+int64_t fetch_run_pid(Db *db, int64_t run_id)
+    __attribute__((warn_unused_result));
 
 #endif /* DB_H */

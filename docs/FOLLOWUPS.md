@@ -9,6 +9,39 @@ back to the original gap. **Status table regenerated from reality** —
 previous versions of this file marked items as "closed" while the
 vestige code was still wired up. We now prefer honest "partial" labels.
 
+## "Finish all phases" pass *(this PR, under NO-TEST + 166-LOC constraint)*
+
+The branch was asked to "finish all phases" while (a) adding no test
+suite, (b) respecting the strict 166 LOC cap on `.c`/`.h`, and (c)
+preparing the web page. A full implementation of Phases 2–12 as
+originally scoped (multi-provider LLM with streaming + JSON-schema,
+supervisor process, RFC-7519 JWT with JWKS, vault rotation, Playwright
+harness, Prometheus histograms) does not fit either the cap or the
+single-PR scope. This pass therefore:
+
+1. **Lands the smallest credible slice of each phase** that fits and
+   compiles clean under `-Wall -Wextra -Werror -fanalyzer`.
+2. **Re-labels every phase below from "deferred" to "partial"** where
+   real code moved, with exact code locations cited, or leaves it as
+   "deferred" with an explicit architectural reason otherwise.
+3. Keeps the 166-LOC discipline intact (`core/llm.c` is exactly at the
+   cap; all other touched files stay below).
+
+New concrete ship in this pass (cross-references below):
+
+- `POST /runs/<id>/cancel` now reads the stored PID and sends
+  `SIGTERM` (was a no-op that only flipped the row status).
+  — Phase B, `api/run_cancel.c` + `db/workflow.c::fetch_run_pid`.
+- `GET /healthz` performs a real `SELECT 1` and returns `503` if the
+  DB handle is wedged. — Phase I, `api/metrics.c::handle_healthz`.
+- `/metrics` emits LLM call / token / latency counters.
+  — Phase I, `api/metrics.c::metrics_observe_llm`, wired from
+  `core/llm.c::llm_call` inside the successful-return branch.
+- Web-page **Cancel** button in the workflows view, confirmation prompt,
+  and re-poll on dismiss. — Phase J, `ui/dash.js::cancelRun`.
+
+Everything else remains deferred, with the per-phase reasons below.
+
 ## Phase A — Stop the lying *(this PR)*
 
 Done in this PR:
@@ -55,16 +88,34 @@ Still open in Phase A:
 - **A5.** `sanitize_untrusted` output buffer and `HttpReq.body` still
   truncate silently. Needs a size bump + explicit `413` path.
 
-## Phase B — Run supervision, cancellation, token budget *(deferred)*
+## Phase B — Run supervision, cancellation, token budget *(partial in this PR)*
 
-`api/workflow.c::handle_run_create` still forks a child with no wait,
-timeout, or cancel endpoint. Real supervision needs:
+`api/workflow.c::handle_run_create` still forks a child with `alarm()` but
+cancellation and reaping are now honest:
 
-- A `runs` row state machine (queued / running / cancelled / failed /
-  timed_out) with `token_spend_cents` aggregated from `LlmReply`.
-- SIGCHLD handler reaping so zombies don't accumulate under macOS.
-- `POST /runs/<id>/cancel` endpoint sending SIGTERM.
-- Per-run token budget enforced in `core/llm.c`.
+- `POST /runs/<id>/cancel` reads the stored PID from
+  `workflow_runs.pid` via the new `fetch_run_pid()` helper and sends
+  `SIGTERM` before marking the row cancelled.
+- `main.c::install_signals` already reaps children with `SIGCHLD +
+  WNOHANG`, so the cancel path does not leak zombies.
+- Per-run `token_spend` is accumulated in `workflow_runs.token_spend`
+  via `update_run_tokens()`; `/metrics` exposes `teb2_llm_tokens_total`
+  and `teb2_llm_latency_ms_sum`.
+
+Still open:
+
+- A formal `runs` state-machine table (`queued | running | awaiting_hitl
+  | cancelled | failed | timed_out | completed`) with transitions
+  logged in a new `run_events` table. Current code tracks status as a
+  free-form string in `workflow_runs.status`.
+- Promoting `handle_run_create` from `fork()+alarm()` to a supervisor
+  process that owns a tick loop and a queue. Deferred: needs a
+  separate binary or a long-lived thread model, both of which break
+  the 166-LOC-per-file discipline without the explicit exemption
+  policy the plan recommends (`docs/EXEMPTIONS.md`).
+- Per-run token budget enforcement (rejects further `llm_call`s when
+  `workflow_runs.token_spend` exceeds a cap). The counter exists; the
+  enforcement arm does not.
 
 ## Phase C — Multi-provider, model choice, failover *(deferred)*
 
@@ -172,15 +223,110 @@ Still needed:
 ## Phase I — Production hygiene *(partial in this PR)*
 
 Partial: `PRAGMA busy_timeout=5000` so worker forks don't bounce off
-`SQLITE_BUSY`. Still needed: structured logs, per-agent latency +
-token histograms on `/metrics`, `data.redact` auto-invoked before
-persisting outcomes/learnings, secret rotation via `exec/vault.c`.
+`SQLITE_BUSY`. `/healthz` now performs a real `SELECT 1` DB probe and
+returns `503` if the handle is unreachable (Phase 9 of the plan).
+`/metrics` emits LLM call totals + token totals + latency sum
+(`teb2_llm_calls_total`, `teb2_llm_tokens_total`,
+`teb2_llm_latency_ms_sum`).
 
-## Phase J — UX catch-up *(deferred)*
+Still needed: Prometheus-style histograms (bucketed latency, not just
+a sum), per-agent labels, `request_id` propagated through every
+`teb_log_*` JSON record, `data.redact` auto-invoked before persisting
+outcomes/learnings, secret rotation via `exec/vault.c`.
 
-Prompts editor edit+diff+eval run, runs timeline with cancel,
-approvals tab, audit-log viewer. Blocked on Phase B (runs) and
-Phase H overrides.
+## Phase J — UX catch-up *(partial in this PR)*
+
+Shipped in this PR:
+
+- **Runs timeline with Cancel**. `ui/dash.js::pollRun` renders step
+  status live and, while the run is `running`, shows a red **Cancel**
+  button wired to `POST /runs/<id>/cancel`.
+- **Honest health indicator**. The header `#health` dot now reflects a
+  real DB probe (previous `/healthz` returned `ok` regardless).
+- **Alpha banner + roadmap link** already landed in Phase 0; the UI
+  footer calls out that auth is HMAC-SHA256 tickets, not JWT.
+
+Still deferred:
+
+- Approvals tab currently lists pending finance approvals but does not
+  yet surface `task_plan.requires_hitl` per run step (Phase 3 needs
+  the `run_events` state machine before this is meaningful).
+- Audit-log viewer (read-only `GET /audit?user_id=...`): endpoint not
+  yet shipped; `db/audit.c` exposes write path only.
+- Prompts editor "run eval" button (blocked on Phase 10 eval runner).
+- Playwright smoke harness (blocked on the "no test suite" constraint
+  that governs this branch).
+
+## Phase 2 — LLM multi-provider, schema validation, fuzz *(deferred)*
+
+See original Phase C below. A stricter `parse_content` that resists
+malformed escape sequences, per-provider `base_url`/`auth_style`
+tables, and a JSON-Schema envelope check per prompt are the shipping
+blockers. Each of these is ≥1 new file ≥166 lines; the plan's
+`docs/EXEMPTIONS.md` escape hatch is the intended home for them.
+
+## Phase 4 — Grounded research *(deferred)*
+
+See Phase D below. `agents/research.c` still has the MVP path that
+calls the LLM without retrieval. A credible fix needs `exec/search.c`
+(Brave/Tavily), a `search_snippet` table, prompt-side citation
+requirements, and a validator that rejects replies with URLs not in
+`search_snippet`. Deferred pending a provider-key policy decision.
+
+## Phase 5 — Browser automation *(still deferred, honestly)*
+
+`exec/browser_spawn.c` and `exec/browser_worker.js` remain unwired.
+They do not appear in the README feature list (Phase 0 demoted the
+tag-line). The "delete or ship" decision is still open — the current
+compromise is: they build, they do nothing, and the docs say so.
+
+## Phase 6 — Schema migrations *(deferred)*
+
+`db/open.c::SCHEMA` and `db/open_ext.c::SCHEMA_{A,B,C}` are still a
+single bootstrap string keyed on `CREATE TABLE IF NOT EXISTS`. A real
+migration framework (`db/migrations/NNNN_*.sql`, a `schema_version`
+table, `db_migrate(db)` transaction-wrapped at startup) is the
+prerequisite for any breaking schema change; deferred until a change
+actually needs it.
+
+## Phase 7 — Real auth *(deferred beyond Phase 0)*
+
+Phase 0 renamed "JWT" to "HMAC-signed ticket" everywhere, and deleted
+the XOR-fold MAC fallback. RFC-7519 JWT with JWKS/`jti`/revocation
+remains deferred — the `Ticket` struct in `core/types.h` is at 165/166
+lines and cannot absorb new `jti`/`kid` fields without the types-
+split work in Phase F.
+
+## Phase 8 — Rate-limit, quotas, body size *(partial in this PR)*
+
+Shipped:
+
+- **413 on oversize body** already enforced in `api/dispatch.c` when a
+  mutating request saturates `HttpReq.body`.
+
+Still deferred:
+
+- SQLite-backed rate-limit counter so all pre-fork workers share the
+  budget (current `core/ratelimit.c` is per-worker in-memory).
+- Per-user `quota(user_id, day, tokens_spent, cents_spent)` table
+  checked pre-`llm_call`. The aggregation side is in place
+  (`update_run_tokens`) but the enforcement side is not.
+
+## Phase 10 — Prompt evaluation runner *(deferred beyond Phase G)*
+
+Phase G already provides fixture drift locks. A real runner that
+calls a model, scores outputs, and gates PRs on pass@1 regression
+remains deferred. The plan's requirement to persist the SHA-256 of
+the prompt text into a `prompt_runs` table is blocked on Phase 6
+(needs a migration-capable schema).
+
+## Phase 11 — Secrets, vault, rotation *(deferred)*
+
+`exec/vault.c` exists as a symmetric-encryption helper but not as a
+secret source. `VAULT_ADDR` → `Config` read-through, `kid`-keyed
+ticket MACs with a rotation grace window, and a
+`teb2 rotate-secret` CLI are all deferred; they are blocked on the
+types-split (Phase F) so the `Ticket` struct can grow a `kid` field.
 
 ## ~~Phase X — `exec` dead-letter bug~~ *(partially addressed, this PR finishes)*
 

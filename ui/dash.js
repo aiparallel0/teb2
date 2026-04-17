@@ -114,16 +114,27 @@ window.pollRun = function (id, attempts) {
             return '<div class="meta">Step ' + s.id + ': '
                 + E(s.agent) + ' — ' + E(s.status) + '</div>';
         }).join("");
+        var cancelBtn = (run.status === "running")
+            ? ' <button class="btn btn-red" onclick="cancelRun('
+              + run.id + ')">Cancel</button>' : '';
         el.innerHTML = '<div class="card">'
             + '<span class="title">Run #' + run.id + '</span>'
             + ' <span class="status status-' + E(run.status || "running")
-            + '">' + E(run.status || "running") + '</span>'
+            + '">' + E(run.status || "running") + '</span>' + cancelBtn
             + '<div class="meta">Goal ' + run.goal_id + '</div>'
             + stepsHtml + '</div>';
         /* Poll every 2s while running */
         if (run.status === "running" && attempts < 60) {
             setTimeout(function () { window.pollRun(id, attempts + 1); }, 2000);
         }
+    });
+};
+window.cancelRun = function (id) {
+    if (!confirm("Cancel run #" + id + "?")) return;
+    teb.api("POST", "/runs/" + id + "/cancel", {}).then(function (r) {
+        if (r.error) { teb.err(r.error); return; }
+        teb.err("Run " + id + " cancellation requested");
+        window.pollRun(id, 0);
     });
 };
 window.checkRun = function (id) { window.pollRun(id, 0); };
