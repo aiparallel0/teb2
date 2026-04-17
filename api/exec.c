@@ -73,7 +73,8 @@ HttpResp handle_exec_run(HttpReq req, Ctx *ctx)
         else if (strcmp(a, "outreach") == 0) in.tag = MSG_NOTIFY;
         else if (strcmp(a, "exec")     == 0) in.tag = MSG_EXEC_RUN;
         else if (strcmp(a, "browser")  == 0) in.tag = MSG_EXEC_RUN;
-        else                                 in.tag = MSG_EXEC_REQ; /* research */
+        else if (strcmp(a, "research") == 0) in.tag = MSG_RESEARCH;
+        else                                 in.tag = MSG_RESEARCH; /* default */
     }
     in.id  = tr.rows[0].id;
     in.db  = ctx->db;

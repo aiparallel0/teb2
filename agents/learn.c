@@ -28,10 +28,18 @@ AgentMsg learn_handle(AgentMsg msg)
         lreq.want_json = 1;
         lrep = llm_call(lreq, msg.cfg);
         if (lrep.err == ERR_OK) {
+            char insight[512];
+            /* Extract the scalar insight sentence. Storing the full
+             * envelope back into learnings.insight turns every future
+             * context injection into a JSON string blob — the model
+             * then treats its own schema as data and collapses. */
+            if (!json_str(lrep.reply, "insight", insight, sizeof(insight)) ||
+                insight[0] == '\0')
+                snprintf(insight, sizeof(insight), "%.*s", 480, lrep.reply);
             if (msg.db) {
                 memset(&lq, 0, sizeof(lq));
                 lq.goal_id = msg.id;
-                snprintf(lq.insight, sizeof(lq.insight), "%.511s", lrep.reply);
+                snprintf(lq.insight, sizeof(lq.insight), "%.511s", insight);
                 lr = store_learning(msg.db, lq); (void)lr;
             }
             snprintf(buf, sizeof(buf), "%.499s", lrep.reply);

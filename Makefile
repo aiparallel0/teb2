@@ -15,7 +15,7 @@ SRCS = core/config.c core/ratelimit.c core/llm.c core/prompts.c core/sanitize.c 
 	     auth/hash.c auth/token.c auth/rbac.c auth/sha256.c \
 	     db/open.c db/open_ext.c db/goals.c db/tasks.c db/users.c \
 	     db/outcomes.c db/nudges.c db/learn.c db/schedules.c db/budgets.c \
-	     db/approvals.c \
+	     db/approvals.c db/task_plan.c \
 	     db/memory.c db/collab.c db/chat.c db/integrations.c db/enterprise.c \
 	     db/analytics.c db/gamification.c db/community.c \
 	     db/assets.c db/workflow.c db/wf_steps.c db/search.c db/audit.c \

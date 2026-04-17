@@ -141,4 +141,19 @@ typedef struct { char query[256]; char entity[32]; int limit; } SearchQuery;
 typedef struct { char entity[32]; int64_t entity_id; char snippet[256]; } SearchHit;
 typedef struct { Err err; SearchHit hits[32]; int count; } SearchResult;
 
+/* --- task_plan: per-task DAG/HITL metadata from decompose/measure --- */
+typedef struct {
+    int64_t task_id;           /* FK -> tasks.id (PK of task_plan) */
+    char    depends_on[128];   /* CSV of sibling indices from decompose */
+    int     effort_minutes;
+    int     est_cost_cents;
+    int     requires_hitl;     /* 0/1 */
+    char    success_criteria[256];
+    char    next_action[16];   /* measure's next_action: done|retry|escalate */
+    int     score_0_100;       /* latest measure score */
+    int     attempts;          /* incremented on retry */
+} TaskPlan;
+typedef struct { int64_t task_id; TaskPlan plan; } TaskPlanQuery;
+typedef struct { Err err; TaskPlan plan; } TaskPlanResult;
+
 #endif /* TYPES_EXT_H */

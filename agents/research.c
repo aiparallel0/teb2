@@ -14,7 +14,7 @@ AgentMsg research_handle(AgentMsg msg)
     OutcomeQuery oq;  OutcomeResult ores;
     char safe[1024];
 
-    if (msg.tag != MSG_EXEC_REQ) return msg;
+    if (msg.tag != MSG_EXEC_REQ && msg.tag != MSG_RESEARCH) return msg;
     if (!msg.cfg || !msg.cfg->openai_key[0])
         return agent_make_result(msg, ERR_IO,
             "{\"error\":\"llm_disabled\",\"reason\":\"no api key\"}");

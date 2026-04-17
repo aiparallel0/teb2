@@ -39,7 +39,8 @@ AgentMsg coord_handle(AgentMsg msg)
     case MSG_GOAL_NEW:    return decompose_handle(msg);
     case MSG_CLARIFY:     return clarify_handle(msg);
     case MSG_TASK_DONE:   return next_task(msg);
-    case MSG_EXEC_REQ:    return research_handle(msg);
+    case MSG_EXEC_REQ:    return research_handle(msg); /* legacy: remove after callers migrate to MSG_RESEARCH */
+    case MSG_RESEARCH:    return research_handle(msg);
     case MSG_FINANCE_REQ: return finance_handle(msg);
     case MSG_NUDGE:       return outreach_handle(msg);
     case MSG_CHECKIN:     return next_task(msg);

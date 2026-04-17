@@ -16,6 +16,16 @@
 /* Bundled context for fork child step execution */
 typedef struct { Db *db; Config *cfg; int64_t run_id; } RunJob;
 
+/* Route by the agent recorded on the step. Previously every step was
+ * sent as MSG_EXEC_REQ and coord collapsed it onto research_handle. */
+static MsgTag step_tag(const char *a)
+{
+    if (strcmp(a, "finance")  == 0) return MSG_FINANCE_REQ;
+    if (strcmp(a, "outreach") == 0) return MSG_NOTIFY;
+    if (strcmp(a, "research") == 0) return MSG_RESEARCH;
+    return MSG_EXEC_RUN; /* exec, browser, unknown */
+}
+
 /* Execute all pending workflow steps sequentially in a child process */
 static int execute_steps(RunJob job, TaskResult tr)
 {
@@ -29,7 +39,7 @@ static int execute_steps(RunJob job, TaskResult tr)
         usr = update_step_status(job.db, sr.steps[i].id, "running", "");
         (void)usr;
         memset(&msg, 0, sizeof(msg));
-        msg.tag = MSG_EXEC_REQ;
+        msg.tag = step_tag(sr.steps[i].agent);
         msg.id  = (i < tr.count) ? tr.rows[i].id : job.run_id;
         msg.db  = job.db;
         msg.cfg = job.cfg;
@@ -63,11 +73,8 @@ HttpResp handle_run_create(HttpReq req, Ctx *ctx)
     if (!extract_json_str(req.body, "\"goal_id\"", gid, sizeof(gid)))
         return json_error(400, "missing_goal_id");
     rq.goal_id = strtoll(gid, NULL, 10);
-
     rr = store_run(ctx->db, rq);
     if (rr.err != ERR_OK) return json_error(500, "db_error");
-
-    /* Fetch tasks for this goal to create workflow steps */
     memset(&tq, 0, sizeof(tq));
     tq.goal_id = rq.goal_id;
     tq.limit   = 16;
@@ -77,35 +84,30 @@ HttpResp handle_run_create(HttpReq req, Ctx *ctx)
         memset(&sq, 0, sizeof(sq));
         sq.run_id = rr.run.id;
         sq.id     = i;
-        snprintf(sq.agent,   sizeof(sq.agent),   "%s",
+        snprintf(sq.agent, sizeof(sq.agent), "%s",
                  tr.rows[i].agent[0] ? tr.rows[i].agent : "exec");
-        snprintf(sq.payload, sizeof(sq.payload), "%s",
-                 tr.rows[i].description);
-        sr = store_step(ctx->db, sq);
-        (void)sr;
+        snprintf(sq.payload, sizeof(sq.payload), "%s", tr.rows[i].description);
+        sr = store_step(ctx->db, sq); (void)sr;
     }
 
     /* Fork child to execute steps asynchronously */
     pid = fork();
     if (pid == 0) {
         Db cdb;
-        const char *final_status = "failed";
         memset(&cdb, 0, sizeof(cdb));
         if (db_open(ctx->cfg->db_path, &cdb) == ERR_OK) {
             job.db     = &cdb;
             job.cfg    = ctx->cfg;
             job.run_id = rr.run.id;
             (void)execute_steps(job, tr);
-            final_status = "done";
-            ur = update_run_status(&cdb, rr.run.id, final_status, "");
+            ur = update_run_status(&cdb, rr.run.id, "done", "");
             (void)ur;
             db_close(&cdb);
         } else {
-            /* Attempt status update with a fresh handle to avoid stuck 'running' */
             Db fdb;
             memset(&fdb, 0, sizeof(fdb));
             if (db_open(ctx->cfg->db_path, &fdb) == ERR_OK) {
-                ur = update_run_status(&fdb, rr.run.id, final_status, "");
+                ur = update_run_status(&fdb, rr.run.id, "failed", "");
                 (void)ur;
                 db_close(&fdb);
             }
@@ -136,7 +138,6 @@ HttpResp handle_run_get(HttpReq req, Ctx *ctx)
     rr = fetch_run(ctx->db, rq);
     if (rr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (rr.err != ERR_OK) return json_error(500, "db_error");
-    /* Tenant check: user may only read runs of goals they own. */
     memset(&gq, 0, sizeof(gq)); gq.id = rr.run.goal_id;
     gr = fetch_goal(ctx->db, gq);
     snprintf(uid, sizeof(uid), "%lld", (long long)ctx->user->user_id);

@@ -108,7 +108,19 @@ static const char *SCHEMA =
     "status TEXT NOT NULL DEFAULT 'pending',"
     "risk TEXT NOT NULL DEFAULT '',"
     "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));"
-    "CREATE INDEX IF NOT EXISTS idx_appr_user ON approvals(user_id,status);";
+    "CREATE INDEX IF NOT EXISTS idx_appr_user ON approvals(user_id,status);"
+
+    "CREATE TABLE IF NOT EXISTS task_plan("
+    "task_id INTEGER PRIMARY KEY,"
+    "depends_on TEXT NOT NULL DEFAULT '',"
+    "effort_minutes INTEGER NOT NULL DEFAULT 0,"
+    "est_cost_cents INTEGER NOT NULL DEFAULT 0,"
+    "requires_hitl INTEGER NOT NULL DEFAULT 0,"
+    "success_criteria TEXT NOT NULL DEFAULT '',"
+    "next_action TEXT NOT NULL DEFAULT '',"
+    "score_0_100 INTEGER NOT NULL DEFAULT 0,"
+    "attempts INTEGER NOT NULL DEFAULT 0,"
+    "FOREIGN KEY (task_id) REFERENCES tasks(id));";
 
 Err db_open(const char *path, Db *out)
 {
@@ -126,6 +138,8 @@ Err db_open(const char *path, Db *out)
     /* Enable WAL mode for concurrent multi-process access */
     sqlite3_exec(out->handle, "PRAGMA journal_mode=WAL;",  NULL, NULL, NULL);
     sqlite3_exec(out->handle, "PRAGMA synchronous=NORMAL;", NULL, NULL, NULL);
+    /* 5s SQLITE_BUSY retry window — worker forks share the DB file. */
+    sqlite3_busy_timeout(out->handle, 5000);
 
     rc = sqlite3_exec(out->handle, SCHEMA, NULL, NULL, &errmsg);
     if (rc != SQLITE_OK) {

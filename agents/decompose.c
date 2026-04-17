@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "core/types.h"
+#include "core/types_ext.h"
 #include "core/errors.h"
 #include "core/llm.h"
 #include "core/sanitize.h"
@@ -91,6 +92,9 @@ AgentMsg decompose_handle(AgentMsg msg)
     n = split_tasks(lrep.reply, pos, ends);
     for (i = 0; i < n && msg.db; i++) {
         size_t ol = (size_t)ends[i];
+        char deps[128], success[256];
+        int64_t effort, cost;
+        int hitl;
         if (ol >= sizeof(obj)) ol = sizeof(obj) - 1;
         memcpy(obj, pos[i], ol); obj[ol] = '\0';
         title[0] = agent[0] = desc[0] = '\0';
@@ -105,7 +109,32 @@ AgentMsg decompose_handle(AgentMsg msg)
         snprintf(tq.description, sizeof(tq.description), "%.511s", desc);
         snprintf(tq.agent,       sizeof(tq.agent),       "%s", agent[0] ? agent : "exec");
         tr = store_task(msg.db, tq);
-        if (tr.err == ERR_OK) stored++;
+        if (tr.err != ERR_OK) continue;
+        stored++;
+        /* A1: persist the rest of the decomposition envelope fields
+         * into task_plan so HITL / DAG / budget / measure actually
+         * see what the prompt already asked the model to emit. */
+        deps[0] = success[0] = '\0';
+        (void)json_str(obj, "depends_on",       deps,    sizeof(deps));
+        (void)json_str(obj, "success_criteria", success, sizeof(success));
+        effort = json_int(obj, "effort_minutes");
+        cost   = json_int(obj, "est_cost_cents");
+        hitl   = json_bool(obj, "requires_hitl");
+        {
+            TaskPlanQuery pq; TaskPlanResult pr;
+            memset(&pq, 0, sizeof(pq));
+            pq.task_id = tr.rows[0].id;
+            snprintf(pq.plan.depends_on, sizeof(pq.plan.depends_on),
+                     "%s", deps);
+            pq.plan.effort_minutes = (effort > 0 && effort < 100000)
+                                     ? (int)effort : 0;
+            pq.plan.est_cost_cents = (cost   > 0 && cost   < 10000000)
+                                     ? (int)cost   : 0;
+            pq.plan.requires_hitl  = (hitl == 1) ? 1 : 0;
+            snprintf(pq.plan.success_criteria,
+                     sizeof(pq.plan.success_criteria), "%s", success);
+            pr = store_task_plan(msg.db, pq); (void)pr;
+        }
     }
     snprintf(buf, sizeof(buf), "decomposed:%d", stored);
     return agent_make_result(msg, ERR_OK, buf);
