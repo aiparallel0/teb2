@@ -27,7 +27,7 @@ The "23-file minimal kernel" framing from the initial seed is dead —
 the product grew. Live counts (verified in CI by `evals/run.sh`):
 
     find core agents api db auth exec -name '*.[ch]' | wc -l   # 150 files
-    find prompts -name '*.md'                        | wc -l   # 77 prompts
+    find prompts -name '*.md'                        | wc -l   # 99 prompts
     find ui      -name '*.js'                        | wc -l   # 10 scripts
 
 Every one still obeys the 166-line cap.
