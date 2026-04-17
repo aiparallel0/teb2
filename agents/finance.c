@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include "core/types.h"
 #include "core/errors.h"
+#include "core/types_ext.h"
 #include "core/llm.h"
+#include "core/sanitize.h"
 #include "agents/channel.h"
 #include "agents/util.h"
 #include "db/db.h"
@@ -25,70 +27,93 @@ static int64_t parse_cents(const char *payload)
     return cents;
 }
 
-static AgentMsg approve(AgentMsg msg)
+static void find_risk(const char *reply, char *out, size_t osz)
 {
-    return agent_make_result(msg, ERR_OK, "approved");
+    const char *p = strstr(reply, "\"risk\"");
+    const char *e;
+    size_t len;
+    out[0] = '\0';
+    if (!p) return;
+    p = strchr(p + 6, '"'); if (!p) return;
+    p++;
+    e = strchr(p, '"'); if (!e) return;
+    len = (size_t)(e - p);
+    if (len >= osz) len = osz - 1;
+    memcpy(out, p, len); out[len] = '\0';
 }
 
-static AgentMsg deny(AgentMsg msg)
+/* LLM risk assessment via prompts/finance.risk.md; stored in
+ * agent_memory and on the approval row when one is created. */
+static void assess_risk(AgentMsg msg, int64_t cents, char *risk, size_t rsz)
 {
-    return agent_make_result(msg, ERR_AUTH, "denied:requires_authorization");
-}
+    LlmReq   lreq; LlmReply lrep;
+    MemQuery mq;   MemResult mr;
+    char user[1024], safe[512];
 
-static AgentMsg needs_confirm(AgentMsg msg)
-{
-    return agent_make_result(msg, ERR_AUTH, "pending:awaiting_confirmation");
-}
-
-/* LLM risk assessment stored in agent_memory after tier check */
-static void store_risk(AgentMsg msg, int64_t cents)
-{
-    LlmReq   lreq;
-    LlmReply lrep;
-    MemQuery mq;
-    MemResult mr;
-    char assessment[512];
-
+    risk[0] = '\0';
     if (!msg.cfg || !msg.cfg->openai_key[0] || !msg.db) return;
 
+    sanitize_untrusted(msg.payload, safe, sizeof(safe));
+    snprintf(user, sizeof(user),
+        "<spend>amount_cents=%lld; context=%s</spend>",
+        (long long)cents, safe);
+
     memset(&lreq, 0, sizeof(lreq));
-    snprintf(lreq.model,  sizeof(lreq.model),  "%s", msg.cfg->openai_model);
-    snprintf(lreq.system, sizeof(lreq.system),
-        "You are a financial risk assessor. "
-        "Rate the risk of this transaction as LOW, MEDIUM, or HIGH. "
-        "Reply with exactly one word.");
-    snprintf(lreq.user, sizeof(lreq.user),
-        "Amount: %lld cents. Context: %.400s",
-        (long long)cents, msg.payload);
+    snprintf(lreq.prompt_name, sizeof(lreq.prompt_name), "finance.risk");
+    snprintf(lreq.user, sizeof(lreq.user), "%s", user);
+    lreq.want_json = 1;
 
     lrep = llm_call(lreq, msg.cfg);
-    snprintf(assessment, sizeof(assessment),
-             "risk:%.500s", lrep.err == ERR_OK ? lrep.reply : "UNKNOWN");
+    if (lrep.err == ERR_OK) find_risk(lrep.reply, risk, rsz);
 
     memset(&mq, 0, sizeof(mq));
     snprintf(mq.agent, sizeof(mq.agent), "finance");
     snprintf(mq.key,   sizeof(mq.key),   "risk_%lld", (long long)msg.id);
-    snprintf(mq.val,   sizeof(mq.val),   "%s", assessment);
-    mr = store_mem(msg.db, mq);
-    (void)mr;
+    snprintf(mq.val,   sizeof(mq.val),   "%.500s",
+             lrep.err == ERR_OK ? lrep.reply : "{\"risk\":\"UNKNOWN\"}");
+    mr = store_mem(msg.db, mq); (void)mr;
+}
+
+static AgentMsg open_approval(AgentMsg msg, int64_t cents, const char *risk)
+{
+    ApprovalQuery aq; ApprovalResult ar;
+    char body[1024];
+
+    if (!msg.db || !msg.user_id[0])
+        return agent_make_result(msg, ERR_AUTH,
+            "{\"status\":\"pending\",\"reason\":\"awaiting confirmation\"}");
+
+    memset(&aq, 0, sizeof(aq));
+    snprintf(aq.user_id, sizeof(aq.user_id), "%s", msg.user_id);
+    snprintf(aq.kind,    sizeof(aq.kind),    "finance");
+    aq.amount_cents = cents;
+    snprintf(aq.payload, sizeof(aq.payload), "%.500s", msg.payload);
+    snprintf(aq.risk,    sizeof(aq.risk),    "%s", risk ? risk : "");
+    ar = store_approval(msg.db, aq);
+
+    snprintf(body, sizeof(body),
+        "{\"status\":\"pending\",\"approval_id\":%lld,"
+        "\"amount_cents\":%lld,\"risk\":\"%s\"}",
+        (long long)(ar.err == ERR_OK ? ar.ap.id : 0),
+        (long long)cents, risk ? risk : "");
+    return agent_make_result(msg, ERR_AUTH, body);
 }
 
 AgentMsg finance_handle(AgentMsg msg)
 {
-    int64_t  cents;
-    AgentMsg result;
+    int64_t cents;
+    char    risk[16];
 
     if (msg.tag != MSG_FINANCE_REQ)
         return agent_make_result(msg, ERR_UNKNOWN, "not_a_finance_request");
 
     cents = parse_cents(msg.payload);
+    assess_risk(msg, cents, risk, sizeof(risk));
 
-    switch (cents < TIER_AUTO ? 0 : cents < TIER_CONFIRM ? 1 : 2) {
-    case 0:  result = approve(msg);       break;
-    case 1:  result = needs_confirm(msg); break;
-    default: result = deny(msg);          break;
-    }
-
-    store_risk(msg, cents); /* async risk assessment — result stored in memory */
-    return result;
+    if (cents < TIER_AUTO) return agent_make_result(msg, ERR_OK,
+        "{\"status\":\"approved\",\"auto\":true}");
+    if (cents < TIER_CONFIRM) return open_approval(msg, cents, risk);
+    return agent_make_result(msg, ERR_AUTH,
+        "{\"status\":\"denied\",\"reason\":\"amount exceeds confirm tier\"}");
 }
+

@@ -159,5 +159,6 @@ typedef struct {
     int64_t id; int64_t goal_id; char insight[512]; int limit;
 } LearnQuery;
 typedef struct { Err err; Learning learning; } LearnResult;
+typedef struct { Err err; Learning rows[8]; int count; } LearnListResult;
 
 #endif /* TYPES_H */

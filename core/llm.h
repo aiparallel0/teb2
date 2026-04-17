@@ -8,12 +8,16 @@
 
 typedef struct {
     char model[64];
-    char system[512];
-    char user[1024];
+    char prompt_name[64];   /* registry key, e.g. "decompose" */
+    char user[1024];        /* untrusted user text; caller must sanitize */
+    char context[1536];     /* trusted extra context (snippets, prior learnings) */
+    int  want_json;         /* 1 ⇒ request JSON object response_format */
 } LlmReq;
 
 typedef struct {
     Err  err;
+    int  status;            /* upstream HTTP status (0 if transport error) */
+    int  total_tokens;      /* parsed from usage.total_tokens (0 if absent) */
     char reply[2048];
 } LlmReply;
 

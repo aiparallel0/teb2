@@ -16,6 +16,18 @@ typedef struct { Err err; Budget budget; } BudgetResult;
 typedef struct { int64_t id; char agent[64]; char key[128]; char val[512]; int64_t ts; } MemEntry;
 typedef struct { int64_t id; char agent[64]; char key[128]; char val[512]; int limit; } MemQuery;
 typedef struct { Err err; MemEntry entry; } MemResult;
+typedef struct { Err err; MemEntry rows[8]; int count; } MemListResult;
+
+/* --- approvals (finance HITL) --- */
+typedef struct {
+    int64_t id; char user_id[64]; char kind[32]; int64_t amount_cents;
+    char    payload[512]; char status[16]; char risk[16]; int64_t created_at;
+} Approval;
+typedef struct {
+    int64_t id; char user_id[64]; char kind[32]; int64_t amount_cents;
+    char    payload[512]; char status[16]; char risk[16]; int limit;
+} ApprovalQuery;
+typedef struct { Err err; Approval ap; Approval rows[16]; int count; } ApprovalResult;
 
 /* --- enterprise --- */
 typedef struct {

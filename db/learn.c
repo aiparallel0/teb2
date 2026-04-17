@@ -75,3 +75,32 @@ LearnResult fetch_learning(Db *db, LearnQuery q)
     sqlite3_finalize(stmt);
     return r;
 }
+
+/* Return up to `limit` recent learnings for a user (via goals.user_id). */
+LearnListResult list_learnings(Db *db, const char *user_id, int limit)
+{
+    LearnListResult r;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT l.id,l.goal_id,l.insight,l.created_at FROM learnings l"
+        " JOIN goals g ON g.id=l.goal_id"
+        " WHERE g.user_id=? ORDER BY l.created_at DESC LIMIT ?;";
+    int cap, n = 0;
+
+    memset(&r, 0, sizeof(r));
+    cap = (int)(sizeof(r.rows) / sizeof(r.rows[0]));
+    if (limit <= 0 || limit > cap) limit = cap;
+    if (!db || !db->handle || !user_id) { r.err = ERR_DB; return r; }
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        r.err = ERR_DB; return r;
+    }
+    sqlite3_bind_text(stmt, 1, user_id, -1, SQLITE_STATIC);
+    sqlite3_bind_int (stmt, 2, limit);
+    while (n < cap && sqlite3_step(stmt) == SQLITE_ROW) {
+        r.rows[n++] = row_to_learning(stmt);
+    }
+    r.count = n;
+    r.err   = ERR_OK;
+    sqlite3_finalize(stmt);
+    return r;
+}
