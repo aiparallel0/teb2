@@ -2,6 +2,10 @@
 teb2
 *.o
 
+# Python cache (evals/mock_llm.py imports)
+__pycache__/
+*.pyc
+
 # Database
 teb2.db
 *.db

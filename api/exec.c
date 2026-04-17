@@ -60,7 +60,13 @@ HttpResp handle_exec_run(HttpReq req, Ctx *ctx)
     /* Route by the agent the decompose phase chose. Previously every
      * task ran as MSG_EXEC_REQ and coord.c collapsed that onto
      * research_handle, so "exec" / "finance" / "outreach" / "browser"
-     * tasks all silently ran the research prompt. */
+     * tasks all silently ran the research prompt. Browser is routed
+     * to MSG_EXEC_RUN as a deliberate interim: exec_handle falls
+     * through to exec.plan when no keyword matches, which yields a
+     * step-by-step plan the user (or the future Playwright worker —
+     * see FOLLOWUPS §Z) can execute. Running the research prompt on
+     * a browser task, the prior behaviour, produces a citation
+     * summary, which is strictly less useful. */
     {
         const char *a = tr.rows[0].agent;
         if      (strcmp(a, "finance")  == 0) in.tag = MSG_FINANCE_REQ;
