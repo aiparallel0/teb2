@@ -33,6 +33,8 @@ NudgeResult fetch_nudge(Db *db, NudgeQuery q) __attribute__((warn_unused_result)
 
 LearnResult store_learning(Db *db, LearnQuery q) __attribute__((warn_unused_result));
 LearnResult fetch_learning(Db *db, LearnQuery q) __attribute__((warn_unused_result));
+LearnListResult list_learnings(Db *db, const char *user_id, int limit)
+    __attribute__((warn_unused_result));
 
 SchedResult store_sched(Db *db, SchedQuery q) __attribute__((warn_unused_result));
 SchedResult fetch_sched(Db *db, SchedQuery q) __attribute__((warn_unused_result));
@@ -43,6 +45,13 @@ BudgetResult record_spend(Db *db, BudgetQuery q) __attribute__((warn_unused_resu
 
 MemResult store_mem(Db *db, MemQuery q) __attribute__((warn_unused_result));
 MemResult fetch_mem(Db *db, MemQuery q) __attribute__((warn_unused_result));
+MemListResult list_mem(Db *db, const char *agent_name, const char *key_prefix,
+                       int limit) __attribute__((warn_unused_result));
+
+/* approvals (finance HITL) */
+ApprovalResult store_approval(Db *db, ApprovalQuery q) __attribute__((warn_unused_result));
+ApprovalResult list_approvals(Db *db, ApprovalQuery q) __attribute__((warn_unused_result));
+ApprovalResult update_approval(Db *db, ApprovalQuery q) __attribute__((warn_unused_result));
 
 /* collab */
 WsResult     store_ws(Db *db, WsQuery q) __attribute__((warn_unused_result));

@@ -91,3 +91,15 @@ HttpResp handle_ui_analyticsjs(HttpReq req, Ctx *ctx)
     (void)req; (void)ctx;
     return serve_file("ui/analytics.js", "application/javascript");
 }
+
+HttpResp handle_ui_approvalsjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/approvals.js", "application/javascript");
+}
+
+HttpResp handle_ui_promptsjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/prompts.js", "application/javascript");
+}

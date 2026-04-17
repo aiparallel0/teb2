@@ -36,6 +36,18 @@ HttpResp dispatch_ext(HttpReq req, Ctx *ctx)
         return handle_exec_run(req, ctx);
     if (strncmp(p, "/decompose/", 11) == 0 && strcmp(req.method, "POST") == 0)
         return handle_decompose_run(req, ctx);
+
+    /* finance HITL approvals */
+    if (strncmp(p, "/approvals/", 11) == 0 && strcmp(req.method, "POST") == 0)
+        return handle_approval_update(req, ctx);
+    if (strncmp(p, "/approvals", 10) == 0 && strcmp(req.method, "GET") == 0)
+        return handle_approval_list(req, ctx);
+
+    /* prompt registry (admin-only) */
+    if (strcmp(p, "/prompts") == 0 && strcmp(req.method, "GET") == 0)
+        return handle_prompt_list(req, ctx);
+    if (strncmp(p, "/prompts/", 9) == 0 && strcmp(req.method, "GET") == 0)
+        return handle_prompt_get(req, ctx);
     if (strcmp(p, "/schedules") == 0 && strcmp(req.method, "POST") == 0)
         return handle_sched_create(req, ctx);
     if (strncmp(p, "/schedules/", 11) == 0 && strcmp(req.method, "GET") == 0)

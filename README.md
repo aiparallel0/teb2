@@ -1,6 +1,36 @@
 # teb2
 
-teb2: C99 goal-to-execution bridge. AI agent orchestration, financial pipelines, browser automation. Context-window-first architecture: 23 files, 166 LOC cap, 2-in/1-out contracts, zero tests, compiler-as-test-suite. Flat includes, no transitive deps. Replaces 64K-line Python monolith with strict SOLID modules.
+teb2: C99 goal-to-execution bridge for AI agent orchestration, financial pipelines, and browser automation.
+
+**Architecture contracts, strictly enforced by CI:**
+- 166-line cap per `.c` / `.h` file.
+- 2-in / 1-out function contracts.
+- Flat includes — no transitive dependency graph.
+- Zero runtime tests — the compiler + `-Werror -fanalyzer` are the test suite.
+
+## The loop
+
+    Goal → Clarify → Decompose → Execute → Measure → Learn
+              ↑                                         │
+              └───────────── learnings ─────────────────┘
+
+`Learn` writes durable insights that later `Clarify` / `Decompose` /
+`outreach.nudge` calls consume as context. Every agent operates via a
+versioned named prompt under `prompts/`, not a string literal buried in
+C source. See [`docs/AGENTS.md`](docs/AGENTS.md) and
+[`docs/PROMPTS.md`](docs/PROMPTS.md) for the agent / prompt reference,
+and [`docs/FOLLOWUPS.md`](docs/FOLLOWUPS.md) for work still outstanding.
+
+## File inventory
+
+This is not a 23-file minimal kernel — that was the seed but the
+product grew. Accurate current counts:
+
+    find core agents api db auth exec -name '*.[ch]' | wc -l   # ~90 files
+    find prompts -name '*.md'                   | wc -l        # 13 prompts
+    find ui      -name '*.js'                   | wc -l        # ~12 scripts
+
+Every one still obeys the 166-line cap.
 
 ## Screenshot
 
@@ -180,9 +210,16 @@ To put nginx in front of the native binary, copy `nginx/nginx.conf` into your ng
 api/        HTTP route handlers
 agents/     AI agent modules (coordinator, clarify, finance, …)
 auth/       Authentication & RBAC (JWT, bcrypt, roles)
-core/       Config loading, rate limiting, shared types & errors
+core/       Config, rate limit, shared types, llm, prompts, sanitize
+core/pd/    Auto-generated C arrays compiled from prompts/*.md
 db/         SQLite schema initialization & per-entity queries
 exec/       Browser automation, SMTP, vault, SSE helpers
+prompts/    Versioned Markdown prompt sources
+docs/       Architecture + follow-up docs
+evals/      Smoke eval harness + mock LLM
 nginx/      Reverse-proxy configuration
 ui/         Frontend — HTML + CSS + JavaScript (no build step)
 ```
+
+Regenerate prompt C arrays with `make prompts` after editing any
+`prompts/*.md`. Run the eval smoke harness with `bash evals/run.sh`.

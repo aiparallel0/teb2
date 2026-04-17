@@ -71,3 +71,35 @@ MemResult fetch_mem(Db *db, MemQuery q)
     sqlite3_finalize(stmt);
     return r;
 }
+
+/* List up to `limit` recent memory rows matching agent and key prefix. */
+MemListResult list_mem(Db *db, const char *agent_name,
+                       const char *key_prefix, int limit)
+{
+    MemListResult r;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "SELECT id,agent,key,val,ts FROM agent_memory"
+                      " WHERE agent=? AND key LIKE ?"
+                      " ORDER BY ts DESC LIMIT ?;";
+    char pat[144];
+    int cap, n = 0;
+
+    memset(&r, 0, sizeof(r));
+    cap = (int)(sizeof(r.rows) / sizeof(r.rows[0]));
+    if (limit <= 0 || limit > cap) limit = cap;
+    if (!db || !db->handle || !agent_name) { r.err = ERR_DB; return r; }
+    snprintf(pat, sizeof(pat), "%s%%", key_prefix ? key_prefix : "");
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        r.err = ERR_DB; return r;
+    }
+    sqlite3_bind_text(stmt, 1, agent_name, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, pat,        -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int (stmt, 3, limit);
+    while (n < cap && sqlite3_step(stmt) == SQLITE_ROW) {
+        r.rows[n++] = row_to_mem(stmt);
+    }
+    r.count = n;
+    r.err   = ERR_OK;
+    sqlite3_finalize(stmt);
+    return r;
+}

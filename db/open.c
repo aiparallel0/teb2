@@ -97,7 +97,18 @@ static const char *SCHEMA =
     "src_ip TEXT NOT NULL DEFAULT '',"
     "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));"
     "CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id);"
-    "CREATE INDEX IF NOT EXISTS idx_audit_ts   ON audit_log(created_at);";
+    "CREATE INDEX IF NOT EXISTS idx_audit_ts   ON audit_log(created_at);"
+
+    "CREATE TABLE IF NOT EXISTS approvals("
+    "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+    "user_id TEXT NOT NULL,"
+    "kind TEXT NOT NULL DEFAULT 'finance',"
+    "amount_cents INTEGER NOT NULL DEFAULT 0,"
+    "payload TEXT NOT NULL DEFAULT '',"
+    "status TEXT NOT NULL DEFAULT 'pending',"
+    "risk TEXT NOT NULL DEFAULT '',"
+    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));"
+    "CREATE INDEX IF NOT EXISTS idx_appr_user ON approvals(user_id,status);";
 
 Err db_open(const char *path, Db *out)
 {
