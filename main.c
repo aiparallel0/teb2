@@ -4,7 +4,9 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <netinet/in.h>
 #include "core/types.h"
 #include "core/errors.h"
@@ -15,6 +17,12 @@
 #include "agents/channel.h"
 #include "api/api.h"
 
+/* Wall-clock budget a worker will spend on one client, from accept()
+ * through complete request receipt. Kept small so a saturated pool
+ * reclaims workers quickly even under slowloris; nginx in front of
+ * teb2 keeps honest clients from ever hitting this. */
+#define REQUEST_DEADLINE_SEC 10
+
 static volatile sig_atomic_t g_running = 1;
 
 static void handle_signal(int sig) { (void)sig; g_running = 0; }
@@ -22,6 +30,21 @@ static void handle_signal(int sig) { (void)sig; g_running = 0; }
 static int is_sse_path(const char *path)
 {
     return (strncmp(path, "/sse/", 5) == 0);
+}
+
+static void install_signals(void)
+{
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = handle_signal;
+    sigemptyset(&sa.sa_mask);
+    /* No SA_RESTART: accept() returns EINTR so the loop can observe
+     * g_running and shut down cleanly instead of blocking forever. */
+    sa.sa_flags = 0;
+    (void)sigaction(SIGTERM, &sa, NULL);
+    (void)sigaction(SIGINT,  &sa, NULL);
+    signal(SIGPIPE, SIG_IGN);
+    signal(SIGCHLD, SIG_IGN);
 }
 
 int main(int argc, char **argv)
@@ -38,13 +61,17 @@ int main(int argc, char **argv)
     HttpResp resp;
 
     cfg = load_config(argc > 1 ? argv[1] : ".env");
+    if (validate_config(&cfg) != ERR_OK) {
+        fprintf(stderr,
+            "teb2: refusing to start: missing or default SECRET "
+            "(must be >=32 chars, not placeholder). Edit .env.\n");
+        return 2;
+    }
     if (db_open(cfg.db_path, &db) != ERR_OK) {
         fprintf(stderr, "db_open failed: %s\n", cfg.db_path);
         return 1;
     }
-    signal(SIGTERM, handle_signal);
-    signal(SIGINT,  handle_signal);
-    signal(SIGCHLD, SIG_IGN);
+    install_signals();
 
     srv = socket(AF_INET, SOCK_STREAM, 0);
     if (srv < 0) { db_close(&db); return 1; }
@@ -84,8 +111,13 @@ int main(int argc, char **argv)
         UserClaims uc;
         TokenResult ar;
         conn = accept(srv, NULL, NULL);
-        if (conn < 0) continue;
-        n = read(conn, buf, sizeof(buf) - 1);
+        if (conn < 0) {
+            if (errno == EINTR) continue; /* signal: re-check g_running */
+            continue;
+        }
+        /* Slowloris / idle-client guard: hard deadlines on the socket. */
+        socket_set_deadlines(conn, REQUEST_DEADLINE_SEC, REQUEST_DEADLINE_SEC);
+        n = slowloris_read(conn, buf, sizeof(buf) - 1, REQUEST_DEADLINE_SEC);
         if (n > 0) {
             buf[n] = '\0';
             req = parse_request(buf, (size_t)n);

@@ -6,10 +6,13 @@ teb2
 teb2.db
 *.db
 
-# Environment (contains secrets)
+# Environment (contains secrets) — never commit real secrets.
+# Only the *.example templates are tracked.
 .env
+.env.production
+.env.local
 !.env.example
-!.env.production
+!.env.production.example
 
 # Backups
 backups/

@@ -40,6 +40,7 @@ HttpResult send_request(HttpReq req, Cred *cred)
     char host[128];
     const char *reqpath;
     int  port = 80;
+    int  is_tls = 0;
     int  fd;
     ssize_t n;
     int hlen;
@@ -57,6 +58,7 @@ HttpResult send_request(HttpReq req, Cred *cred)
     if (strncmp(req.path, "https://", 8) == 0) {
         path_start = req.path + 8;
         port = 443;
+        is_tls = 1;
     } else if (strncmp(req.path, "http://", 7) == 0) {
         path_start = req.path + 7;
     }
@@ -73,9 +75,6 @@ HttpResult send_request(HttpReq req, Cred *cred)
         if (colon) { port = atoi(colon + 1); *colon = '\0'; }
     }
 
-    fd = open_connection(host, port);
-    if (fd < 0) { r.err = ERR_IO; return r; }
-
     reqpath = slash ? slash : "/";
     hlen = snprintf(buf, sizeof(buf),
              "%s %s HTTP/1.0\r\nHost: %s\r\nContent-Length: %zu\r\n",
@@ -88,18 +87,31 @@ HttpResult send_request(HttpReq req, Cred *cred)
                          "Content-Type: application/json\r\n");
     if (hlen > 0 && (size_t)hlen < sizeof(buf) - 3)
         hlen += snprintf(buf + hlen, sizeof(buf) - (size_t)hlen, "\r\n");
-
-    if (hlen <= 0 || write(fd, buf, (size_t)hlen) < 0) {
-        close(fd); r.err = ERR_IO; return r;
+    if (hlen <= 0) { r.err = ERR_IO; return r; }
+    if (req.body_len > 0
+        && (size_t)hlen + req.body_len < sizeof(buf)) {
+        memcpy(buf + hlen, req.body, req.body_len);
+        hlen += (int)req.body_len;
     }
-    if (req.body_len > 0 && write(fd, req.body, req.body_len) < 0) {
-        close(fd); r.err = ERR_IO; return r;
-    }
 
-    n = read(fd, buf, (ssize_t)(sizeof(buf) - 1));
-    close(fd);
-    if (n < 0) { r.err = ERR_IO; return r; }
-    buf[n] = '\0';
+    if (is_tls) {
+        char rbuf[HTTP_BUFSIZE];
+        n = tls_request(host, port, buf, (size_t)hlen,
+                        rbuf, sizeof(rbuf));
+        if (n < 0) { r.err = ERR_IO; return r; }
+        memcpy(buf, rbuf, (size_t)n);
+        buf[n] = '\0';
+    } else {
+        fd = open_connection(host, port);
+        if (fd < 0) { r.err = ERR_IO; return r; }
+        if (write(fd, buf, (size_t)hlen) < 0) {
+            close(fd); r.err = ERR_IO; return r;
+        }
+        n = read(fd, buf, (ssize_t)(sizeof(buf) - 1));
+        close(fd);
+        if (n < 0) { r.err = ERR_IO; return r; }
+        buf[n] = '\0';
+    }
 
     r.status = 0;
     if (n > 9) r.status = atoi(buf + 9); /* "HTTP/1.x NNN " */

@@ -102,4 +102,9 @@ Err index_entity(Db *db, const char *entity,
                  int64_t entity_id, const char *content)
     __attribute__((warn_unused_result));
 
+/* audit */
+Err audit_log(Db *db, const char *user_id, const char *action,
+              const char *path, int status, const char *src_ip)
+    __attribute__((warn_unused_result));
+
 #endif /* DB_H */

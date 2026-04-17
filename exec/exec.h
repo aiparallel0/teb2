@@ -1,6 +1,7 @@
 #ifndef EXEC_H
 #define EXEC_H
 
+#include <sys/types.h>
 #include "core/types.h"
 #include "core/errors.h"
 #include "core/types_collab.h"
@@ -41,5 +42,11 @@ OAuthResult oauth_refresh(const char *provider, const char *refresh_tok,
 /* browser process lifecycle */
 typedef struct { int pid; int rfd; int wfd; } BrowserProc;
 int browser_spawn(BrowserProc *proc) __attribute__((warn_unused_result));
+
+/* exec/tls.c — verified TLS client. Returns bytes read (>=0) or -1. */
+ssize_t tls_request(const char *host, int port,
+                    const char *req_buf, size_t req_len,
+                    char *resp_buf, size_t resp_cap)
+    __attribute__((warn_unused_result));
 
 #endif /* EXEC_H */
