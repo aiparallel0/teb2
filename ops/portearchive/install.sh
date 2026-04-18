@@ -58,6 +58,12 @@ echo "=== teb2 install started at $(date -Iseconds) (pid $$) ==="
 # ── Tunables ────────────────────────────────────────────────────────────
 REPO_URL="${REPO_URL:-https://github.com/aiparallel0/teb2.git}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
+# If the repo is private, set GITHUB_TOKEN to a Personal Access Token
+# with at least `repo:read` (fine-grained: contents=read). The token is
+# embedded into the remote URL ONLY for this repo via `git remote
+# set-url`, persisted to /opt/teb2/.git/config (chmod 600 by git), and
+# also written to /etc/teb2/webhook.env so redeploy.sh can fetch.
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/teb2}"
 DOMAIN_HINT="${DOMAIN_HINT:-portearchive.com}"
 LOOPBACK_PORT="${TEB2_LOOPBACK_PORT:-18082}"
@@ -88,6 +94,22 @@ COMPOSE="docker compose"; docker compose version >/dev/null 2>&1 \
     || COMPOSE="docker-compose"
 systemctl --version >/dev/null || abort "systemd required"
 
+# Docker daemon must actually be running. The CLI being installed is
+# not enough — `docker info` fails with "Cannot connect to the Docker
+# daemon" when dockerd is stopped.
+if ! docker info >/dev/null 2>&1; then
+    info "  docker daemon not running — starting and enabling at boot"
+    systemctl enable --now docker || abort "systemctl enable --now docker failed"
+    # daemon takes a beat to start accepting connections
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        docker info >/dev/null 2>&1 && break
+        sleep 1
+    done
+    docker info >/dev/null 2>&1 \
+        || abort "docker daemon still not reachable after start; see: journalctl -u docker -n 50"
+fi
+info "  docker daemon: $(docker info --format '{{.ServerVersion}}' 2>/dev/null || echo 'unknown')"
+
 # Sanity: host nginx is running and serving portearchive.com somewhere.
 if ! nginx -T 2>/dev/null | grep -Eq "server_name[^;]*${DOMAIN_HINT}"; then
     warn "did not find a server_name matching '${DOMAIN_HINT}' in nginx -T"
@@ -105,14 +127,42 @@ port_free "$WEBHOOK_PORT" \
 
 # ── 2. Repo ─────────────────────────────────────────────────────────────
 info "Step 2/11 — clone or update repo at $INSTALL_DIR"
+
+# Build an auth-bearing URL only if a token was supplied. Embedding the
+# token in the remote URL is the simplest way to make every subsequent
+# `git fetch` (including from redeploy.sh, run by systemd) work without
+# stdin or a credential helper. Git stores .git/config mode 600.
+auth_url() {
+    if [[ -n "$GITHUB_TOKEN" ]]; then
+        # Strip any existing user:pass@ prefix, then re-insert oauth2:TOKEN@
+        echo "$1" | sed -E "s#^(https?://)([^@]+@)?#\1oauth2:${GITHUB_TOKEN}@#"
+    else
+        echo "$1"
+    fi
+}
+CLONE_URL="$(auth_url "$REPO_URL")"
+
 if [[ -d "$INSTALL_DIR/.git" ]]; then
-    git -C "$INSTALL_DIR" fetch --quiet origin
+    # Re-set the remote URL each run so a freshly-supplied token replaces
+    # an expired one without requiring `rm -rf /opt/teb2`.
+    git -C "$INSTALL_DIR" remote set-url origin "$CLONE_URL"
+    if ! git -C "$INSTALL_DIR" fetch --quiet origin 2>/dev/null; then
+        if [[ -z "$GITHUB_TOKEN" ]]; then
+            abort "git fetch failed and GITHUB_TOKEN is empty — set GITHUB_TOKEN=ghp_… and re-run"
+        fi
+        abort "git fetch failed even with GITHUB_TOKEN set — token may be expired or scoped wrong"
+    fi
     git -C "$INSTALL_DIR" checkout --quiet "$REPO_BRANCH"
     if ! git -C "$INSTALL_DIR" merge --ff-only "origin/$REPO_BRANCH" >/dev/null 2>&1; then
         warn "cannot fast-forward (local edits?) — leaving repo as is"
     fi
 else
-    git clone --quiet --branch "$REPO_BRANCH" "$REPO_URL" "$INSTALL_DIR"
+    if ! git clone --quiet --branch "$REPO_BRANCH" "$CLONE_URL" "$INSTALL_DIR" 2>/dev/null; then
+        if [[ -z "$GITHUB_TOKEN" ]]; then
+            abort "git clone failed and GITHUB_TOKEN is empty — repo is private; set GITHUB_TOKEN=ghp_… and re-run"
+        fi
+        abort "git clone failed even with GITHUB_TOKEN set — token may be expired or scoped wrong"
+    fi
 fi
 cd "$INSTALL_DIR"
 CURRENT_SHA="$(git rev-parse --short HEAD)"
@@ -147,6 +197,17 @@ EOF
     info "  wrote $WEBHOOK_ENV (secret: ${WHS:0:8}…${WHS: -4})"
 else
     info "  $WEBHOOK_ENV already exists — keeping existing secret"
+fi
+
+# Persist GITHUB_TOKEN into webhook.env so redeploy.sh (run by systemd
+# with EnvironmentFile=$WEBHOOK_ENV) can re-set the remote URL on each
+# auto-redeploy. Idempotent: only writes if a token is supplied.
+if [[ -n "$GITHUB_TOKEN" ]]; then
+    if grep -q '^GITHUB_TOKEN=' "$WEBHOOK_ENV"; then
+        sed -i "s|^GITHUB_TOKEN=.*|GITHUB_TOKEN=${GITHUB_TOKEN}|" "$WEBHOOK_ENV"
+    else
+        echo "GITHUB_TOKEN=${GITHUB_TOKEN}" >> "$WEBHOOK_ENV"
+    fi
 fi
 # shellcheck source=/dev/null
 set -a; . "$WEBHOOK_ENV"; set +a

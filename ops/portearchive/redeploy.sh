@@ -41,6 +41,18 @@ else
     log "ERROR: docker compose not found"; exit 2
 fi
 
+# If GITHUB_TOKEN is supplied (via the webhook systemd EnvironmentFile),
+# re-set the remote URL each run so a rotated token takes effect on
+# the next push without manual intervention. The git config file is
+# created mode 600 by git; the token is only ever stored there.
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    CUR_URL="$(git remote get-url origin)"
+    NEW_URL="$(echo "$CUR_URL" | sed -E "s#^(https?://)([^@]+@)?#\1oauth2:${GITHUB_TOKEN}@#")"
+    if [[ "$CUR_URL" != "$NEW_URL" ]]; then
+        git remote set-url origin "$NEW_URL"
+    fi
+fi
+
 log "fetching origin"
 git fetch --quiet origin main
 

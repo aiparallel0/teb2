@@ -44,22 +44,52 @@ re-authenticates or idles out.** That will kill any foreground install.
 Run the install detached from the tty and tail the log file instead:
 
 ```sh
-# One-time: fetch the installer and run it fully detached.
-# Survives the DO console disconnecting on you.
+# 0) Make sure the docker daemon is up (the installer also auto-starts
+#    it but it's harmless to do this first):
+systemctl enable --now docker
+
+# 1) Generate a Personal Access Token at
+#    https://github.com/settings/tokens?type=beta with:
+#       Resource owner   : aiparallel0
+#       Repository access: Only select repositories -> teb2
+#       Permissions      : Contents = Read-only  (and nothing else)
+#    Export it for the install command:
+export GITHUB_TOKEN=ghp_yourTokenHere
+
+# 2) Fetch + run the installer fully detached. The token is embedded
+#    into /opt/teb2/.git/config (mode 600) and persisted to
+#    /etc/teb2/webhook.env so the auto-redeploy systemd service can
+#    fetch on every push without prompting.
 mkdir -p /opt && cd /opt
-git clone https://github.com/aiparallel0/teb2 teb2 2>/dev/null || true
+if [ ! -d /opt/teb2/.git ]; then
+    git clone -b claude/deploy-detection-site-W4VTy \
+        "https://oauth2:${GITHUB_TOKEN}@github.com/aiparallel0/teb2.git" \
+        /opt/teb2
+fi
 cd /opt/teb2
+git remote set-url origin "https://oauth2:${GITHUB_TOKEN}@github.com/aiparallel0/teb2.git"
 git fetch origin
-git checkout main   # or: claude/deploy-detection-site-W4VTy before merge
+git checkout claude/deploy-detection-site-W4VTy   # or main once merged
 git pull --ff-only
-setsid nohup bash ops/portearchive/install.sh \
+
+setsid nohup env GITHUB_TOKEN="$GITHUB_TOKEN" \
+    bash ops/portearchive/install.sh \
     </dev/null >/var/log/teb2-install.log 2>&1 &
 disown
-# Watch progress:
 tail -f /var/log/teb2-install.log
-# Ctrl-C out of the tail whenever; the install continues regardless.
-# Re-attach at any time with: tail -n+1 /var/log/teb2-install.log
+# Ctrl-C out of the tail anytime; install continues. Re-attach later
+# with: tail -n+1 /var/log/teb2-install.log
 ```
+
+The token is **read-only on a single repo**. It is the smallest scope
+that lets `redeploy.sh` `git fetch origin main` non-interactively. The
+token never leaves the droplet; it is stored in `/opt/teb2/.git/config`
+(mode 600 by git) and `/etc/teb2/webhook.env` (mode 600). To rotate,
+overwrite both files (or just re-run the install with a new
+`GITHUB_TOKEN`).
+
+If the repo is later made public, drop the `GITHUB_TOKEN` env var and
+the script falls back to the unauthenticated URL automatically.
 
 The installer itself also writes to `/var/log/teb2-install.log` via
 `tee`, so even if you forget the `nohup` dance, the output is
