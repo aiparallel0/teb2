@@ -57,7 +57,17 @@ echo "=== teb2 install started at $(date -Iseconds) (pid $$) ==="
 
 # ── Tunables ────────────────────────────────────────────────────────────
 REPO_URL="${REPO_URL:-https://github.com/aiparallel0/teb2.git}"
-REPO_BRANCH="${REPO_BRANCH:-main}"
+# Default branch = whatever is currently checked out in $INSTALL_DIR
+# (if the directory exists), else "main". Prevents the installer from
+# silently yanking the worktree off the branch the operator just
+# checked out by hand — which erases ops/portearchive/ from the
+# worktree when the branch being installed is not yet merged to main.
+_DEFAULT_BRANCH="main"
+if [[ -d "${INSTALL_DIR:-/opt/teb2}/.git" ]]; then
+    _DETECTED="$(git -C "${INSTALL_DIR:-/opt/teb2}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+    [[ -n "$_DETECTED" && "$_DETECTED" != "HEAD" ]] && _DEFAULT_BRANCH="$_DETECTED"
+fi
+REPO_BRANCH="${REPO_BRANCH:-$_DEFAULT_BRANCH}"
 # If the repo is private, set GITHUB_TOKEN to a Personal Access Token
 # with at least `repo:read` (fine-grained: contents=read). The token is
 # embedded into the remote URL ONLY for this repo via `git remote
