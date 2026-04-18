@@ -235,20 +235,9 @@ exec/       Outbound I/O helpers — HTTP, TLS, SMTP, SSE, vault,
 prompts/    Versioned Markdown prompt sources
 docs/       Architecture + follow-up docs
 evals/      Smoke eval harness + mock LLM
-nginx/      Reverse-proxy configuration (single-site default)
-ops/        Operational scripts (backup, portearchive subpath deploy)
+nginx/      Reverse-proxy configuration
 ui/         Frontend — HTML + CSS + JavaScript (no build step)
 ```
 
 Regenerate prompt C arrays with `make prompts` after editing any
 `prompts/*.md`. Run the eval smoke harness with `bash evals/run.sh`.
-
-### Deploying under a subpath (portearchive.com/teb2/)
-
-If you want to mount teb2 on a server that already hosts other sites
-on port 443 via its own nginx (e.g. alongside `/teb` and `/fixie` at
-`portearchive.com`), see [`docs/PORTEARCHIVE_DEPLOY.md`](docs/PORTEARCHIVE_DEPLOY.md)
-and run [`ops/portearchive/install.sh`](ops/portearchive/install.sh)
-as root on the target droplet. That script wires a nginx location
-snippet, binds the app only to loopback, and installs a GitHub webhook
-receiver for push-to-main auto-deploys.
