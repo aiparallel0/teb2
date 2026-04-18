@@ -80,7 +80,7 @@ typedef struct {
 
 typedef struct {
     int    status;
-    char   body[8192];
+    char   body[32768];
     size_t body_len;
     char   content_type[64];
 } HttpResp;
