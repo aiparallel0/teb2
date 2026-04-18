@@ -1,0 +1,32 @@
+[Unit]
+Description=teb2 GitHub webhook receiver (adnanh/webhook)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Loopback-only bind; host nginx proxies /hooks/teb2-deploy in.
+# ExecStart is a shell to expand env vars in args.
+EnvironmentFile=/etc/teb2/webhook.env
+ExecStart=/usr/bin/webhook \
+    -hooks /opt/teb2/ops/portearchive/hooks.json \
+    -ip 127.0.0.1 \
+    -port ${TEB2_WEBHOOK_PORT} \
+    -hotreload \
+    -verbose
+Restart=on-failure
+RestartSec=5
+# adnanh/webhook execs redeploy.sh, which runs `docker compose` and
+# `git`. Run as root on the droplet; docker socket + write access to
+# /opt/teb2 are both required. If you deploy as a non-root user, grant
+# that user docker group membership and chown -R /opt/teb2.
+User=root
+Group=root
+# Harden the service a little without preventing docker/git access.
+NoNewPrivileges=true
+ProtectSystem=false
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

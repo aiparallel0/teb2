@@ -81,7 +81,7 @@ window.startSSE = function () {
     var ws = document.getElementById("chat-ws").value || "1";
     var t = teb.token();
     if (!t) { teb.err("Login required for live chat"); return; }
-    var src = new EventSource("/sse/chat/" + ws + "?token=" + t);
+    var src = new EventSource(teb.base + "/sse/chat/" + ws + "?token=" + t);
     src.onmessage = function (e) {
         try {
             var m = JSON.parse(e.data);

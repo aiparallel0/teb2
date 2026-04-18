@@ -1,9 +1,10 @@
 /* teb2 core — api, auth, navigation. ≤166 lines */
 (function () {
 "use strict";
-var BASE = "";
+var BASE = window.location.pathname.replace(/\/[^/]*$/, "");
 var T = localStorage.getItem("teb2_token") || "";
 window.teb = {
+    base: BASE,
     token: function (v) { if (v !== undefined) { T = v; localStorage.setItem("teb2_token", v); } return T; },
     api: function (m, p, b) {
         var o = { method: m, headers: { "Content-Type": "application/json" } };
