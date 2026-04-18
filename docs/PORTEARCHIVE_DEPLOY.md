@@ -39,20 +39,38 @@ and :443 and fight the host nginx.
 
 ### 1. First install
 
-On the droplet, as root:
+**Important — the DigitalOcean web console SIGHUPs your shell when it
+re-authenticates or idles out.** That will kill any foreground install.
+Run the install detached from the tty and tail the log file instead:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/aiparallel0/teb2/main/ops/portearchive/install.sh \
-  | TEB2_LOOPBACK_PORT=18082 TEB2_WEBHOOK_PORT=9001 bash
+# One-time: fetch the installer and run it fully detached.
+# Survives the DO console disconnecting on you.
+mkdir -p /opt && cd /opt
+git clone https://github.com/aiparallel0/teb2 teb2 2>/dev/null || true
+cd /opt/teb2
+git fetch origin
+git checkout main   # or: claude/deploy-detection-site-W4VTy before merge
+git pull --ff-only
+setsid nohup bash ops/portearchive/install.sh \
+    </dev/null >/var/log/teb2-install.log 2>&1 &
+disown
+# Watch progress:
+tail -f /var/log/teb2-install.log
+# Ctrl-C out of the tail whenever; the install continues regardless.
+# Re-attach at any time with: tail -n+1 /var/log/teb2-install.log
 ```
 
-Or, if you prefer to read before running (recommended first time):
+The installer itself also writes to `/var/log/teb2-install.log` via
+`tee`, so even if you forget the `nohup` dance, the output is
+recoverable — provided the shell didn't die before the script did.
 
-```sh
-git clone https://github.com/aiparallel0/teb2 /opt/teb2
-less /opt/teb2/ops/portearchive/install.sh      # read it
-bash /opt/teb2/ops/portearchive/install.sh
-```
+Alternative, if you already have the repo cloned somewhere else (for
+example at `~/teb2`), just run from inside `/opt/teb2` — the script
+only touches `/opt/teb2`, `/etc/nginx/snippets/teb2.conf`,
+`/etc/teb2/`, `/etc/systemd/system/teb2-webhook.service`, and whichever
+single nginx sites-enabled file contains the portearchive :443 server
+block.
 
 The script:
 1. preflights nginx, docker, python3, openssl, curl;

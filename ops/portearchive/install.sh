@@ -42,6 +42,19 @@
 
 set -euo pipefail
 
+# ── Logging — survive console disconnect ────────────────────────────────
+# Everything below goes to both stdout AND a permanent logfile, so
+# reconnecting after a DigitalOcean web-console timeout lets you
+# `tail -n+1 /var/log/teb2-install.log` to see what happened.
+LOGFILE="${TEB2_INSTALL_LOG:-/var/log/teb2-install.log}"
+mkdir -p "$(dirname "$LOGFILE")" 2>/dev/null || true
+# Using `tee -a` via process substitution; `exec >` installs it for the
+# rest of the script. Works when run foreground, background, or via
+# `nohup … &`. Does NOT protect against SIGHUP by itself — use nohup
+# or `setsid … < /dev/null &` for that (see docs/PORTEARCHIVE_DEPLOY.md).
+exec > >(tee -a "$LOGFILE") 2>&1
+echo "=== teb2 install started at $(date -Iseconds) (pid $$) ==="
+
 # ── Tunables ────────────────────────────────────────────────────────────
 REPO_URL="${REPO_URL:-https://github.com/aiparallel0/teb2.git}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
@@ -165,34 +178,63 @@ sed \
 
 # ── 7. Insert include into portearchive server block ────────────────────
 info "Step 7/11 — wire include into portearchive server block"
-# Find candidate files: sites-enabled first, then conf.d
+# Find candidate files (sites-enabled + conf.d) that contain BOTH a
+# matching server_name AND a :443 listener. Multiple server blocks can
+# live in one file (common: a :80 redirect + a :443 main + extras).
+# We only care about the file that has the 443-ssl block, because that
+# is the one we will inject the include into.
 MAPFILE=()
 while IFS= read -r -d '' f; do
-    if grep -Eq "server_name[^;]*${DOMAIN_HINT}" "$f"; then
+    if grep -Eq "server_name[^;]*${DOMAIN_HINT}" "$f" \
+       && grep -Eq "listen[^;]*\b443\b" "$f"; then
         MAPFILE+=("$f")
     fi
 done < <(find /etc/nginx/sites-enabled /etc/nginx/conf.d -maxdepth 2 -type f -print0 2>/dev/null)
+
+# If no file had both, fall back to any file that mentions the domain —
+# the Python inserter below will still refuse to edit if no 443 block is
+# present, so this is a cheap widening, not a safety hole.
+if [[ ${#MAPFILE[@]} -eq 0 ]]; then
+    while IFS= read -r -d '' f; do
+        if grep -Eq "server_name[^;]*${DOMAIN_HINT}" "$f"; then
+            MAPFILE+=("$f")
+        fi
+    done < <(find /etc/nginx/sites-enabled /etc/nginx/conf.d -maxdepth 2 -type f -print0 2>/dev/null)
+fi
 
 if [[ ${#MAPFILE[@]} -eq 0 ]]; then
     warn "no nginx config file references ${DOMAIN_HINT} — add manually:"
     warn "    include ${NGINX_SNIPPET};"
     warn "inside the existing portearchive server{} block, then run:"
     warn "    nginx -t && systemctl reload nginx"
+    MAPFILE=()
 elif [[ ${#MAPFILE[@]} -gt 1 ]]; then
-    warn "multiple nginx config files reference ${DOMAIN_HINT}:"
+    warn "multiple candidate nginx files (both have server_name+listen 443):"
     for f in "${MAPFILE[@]}"; do warn "    $f"; done
-    warn "not risking auto-edit; add include manually to the SSL server block"
-else
-    TARGET="${MAPFILE[0]}"
+    warn "will try each in order until one contains a matching 443 server block"
+fi
+
+# Iterate through candidates. Python inserter sets done=true on the
+# FIRST file whose 443 server block matches. If no file matches, we
+# fall through with INSERTED=0 and print manual instructions.
+INSERTED=0
+for TARGET in "${MAPFILE[@]:-}"; do
+    [[ -n "$TARGET" ]] || continue
+    (( INSERTED == 1 )) && break
     if grep -qF "include ${NGINX_SNIPPET};" "$TARGET"; then
         info "  include already present in $TARGET"
-    else
-        BACKUP="${TARGET}.bak.$(date +%s)"
-        cp -a "$TARGET" "$BACKUP"
-        # Use Python to insert right before the closing } of the FIRST
-        # server block that contains `server_name ... portearchive.com`
-        # and listens on 443. Preserves indentation of existing content.
-        python3 - "$TARGET" "$NGINX_SNIPPET" "$DOMAIN_HINT" <<'PY'
+        INSERTED=1
+        continue
+    fi
+    BACKUP="${TARGET}.bak.$(date +%s)"
+    cp -a "$TARGET" "$BACKUP"
+    # Python inserter: put `include …/teb2.conf;` right before the
+    # closing } of the FIRST server block in this file that has both
+    # `server_name ... ${domain}` and `listen ... 443`. Exits 3 if no
+    # such block exists; we restore the backup and move to the next
+    # candidate file. Exits 0 on success.
+    set +e
+    python3 - "$TARGET" "$NGINX_SNIPPET" "$DOMAIN_HINT" <<'PY'
 import re, sys
 path, snippet, domain = sys.argv[1], sys.argv[2], sys.argv[3]
 src = open(path).read()
@@ -224,24 +266,39 @@ while i < len(src):
     out.append("}")
     i = j
 if not done:
-    sys.stderr.write("WARN: no 443 server block matched; config unchanged\n")
+    sys.stderr.write("no 443 server block in this file; skipping\n")
     sys.exit(3)
 open(path, 'w').write("".join(out))
 PY
-        RC=$?
-        if [[ $RC -ne 0 ]]; then
-            warn "python inserter returned $RC — restoring backup"
-            cp -a "$BACKUP" "$TARGET"
-        fi
-        if ! nginx -t 2>&1; then
-            err "nginx -t failed after insert — restoring $TARGET from $BACKUP"
-            cp -a "$BACKUP" "$TARGET"
-            nginx -t || abort "even the pre-install config fails nginx -t — manual fix required"
-            abort "install aborted; snippet left at $NGINX_SNIPPET (not wired in)"
-        fi
-        systemctl reload nginx
-        info "  inserted include into $TARGET and reloaded nginx (backup: $BACKUP)"
+    RC=$?
+    set -e
+    if [[ $RC -eq 3 ]]; then
+        info "  $TARGET has no matching 443 block — restoring and trying next"
+        cp -a "$BACKUP" "$TARGET"
+        continue
     fi
+    if [[ $RC -ne 0 ]]; then
+        warn "python inserter returned $RC on $TARGET — restoring backup"
+        cp -a "$BACKUP" "$TARGET"
+        continue
+    fi
+    if ! nginx -t 2>&1; then
+        err "nginx -t failed after insert into $TARGET — restoring backup"
+        cp -a "$BACKUP" "$TARGET"
+        nginx -t || abort "pre-install config itself fails nginx -t — manual fix required"
+        warn "moving to next candidate file"
+        continue
+    fi
+    systemctl reload nginx
+    info "  inserted include into $TARGET and reloaded nginx (backup: $BACKUP)"
+    INSERTED=1
+done
+
+if [[ $INSERTED -eq 0 && ${#MAPFILE[@]} -gt 0 ]]; then
+    warn "could not auto-insert into any candidate file — add this line by hand"
+    warn "inside the portearchive.com server{} block that listens on 443:"
+    warn "    include ${NGINX_SNIPPET};"
+    warn "then: nginx -t && systemctl reload nginx"
 fi
 
 # ── 8. Build + start app container ──────────────────────────────────────
