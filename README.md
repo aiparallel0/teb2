@@ -16,6 +16,8 @@ registered agent handlers.
 - 166-line cap per `.c` / `.h` file (hard, no exemptions).
 - 2-in / 1-out function contracts.
 - Flat includes — no transitive dependency graph.
+- `exec/` is the only layer allowed to do outbound I/O (sockets, fork,
+  curl, TLS, SMTP, SSE); `core/pd/*` is side-effect-free LLM logic.
 - The compiler (`-Werror -fanalyzer -D_FORTIFY_SOURCE=2`) and the
   `evals/run.sh` drift guard are the only automated gates today.
   A behavioural test suite is on the roadmap
@@ -224,20 +226,31 @@ To put nginx in front of the native binary, copy `nginx/nginx.conf` into your ng
 ## Project layout
 
 ```
-api/        HTTP route handlers
-agents/     AI agent modules (coordinator, clarify, finance, …)
-auth/       Authentication & RBAC (HMAC-signed tickets, bcrypt, roles)
-core/       Config, rate limit, shared types, llm, prompts, sanitize
-core/pd/    Auto-generated C arrays compiled from prompts/*.md
-db/         SQLite schema initialization & per-entity queries
-exec/       Outbound I/O helpers — HTTP, TLS, SMTP, SSE, vault,
-            plus a browser-driver stub (not yet wired; see FOLLOWUPS §E)
-prompts/    Versioned Markdown prompt sources
-docs/       Architecture + follow-up docs
-evals/      Smoke eval harness + mock LLM
-nginx/      Reverse-proxy configuration (single-site default)
-ops/        Operational scripts (backup, portearchive subpath deploy)
-ui/         Frontend — HTML + CSS + JavaScript (no build step)
+api/         HTTP route handlers + server_loop.c (socket/accept/pre-fork)
+agents/      AI agent modules (coord, clarify, decompose, finance,
+             outreach, research, measure, learn, exec, router, plugin,
+             oauth); calls core/pd/ for LLM work and db/ for persistence
+auth/        Authentication & RBAC (HMAC-SHA256 tickets, bcrypt, sha256,
+             roles)
+core/        Kernel: config, log, llm, prompts, sanitize, ratelimit,
+             errors and the per-domain type headers
+             (types.h / types_workflow.h / types_finance.h /
+             types_enterprise.h / types_analytics.h / types_content.h /
+             types_memory.h / types_collab.h; types_ext.h is an umbrella
+             for backwards compatibility)
+core/pd/     One C file per prompt — pure LLM executors (no I/O, no DB),
+             generated from prompts/*.md via tools/gen_prompts.sh
+db/          SQLite schema (open.c + open_ext.c) & per-entity queries;
+             every query goes through parameterized sqlite3 bindings
+exec/        The only layer allowed to do outbound I/O side effects:
+             http, tls, smtp, sse, vault, browser, oauth_http, notify,
+             run_spawn (forks workflow runs)
+prompts/     Versioned Markdown prompt sources (121 prompts)
+docs/        Architecture + follow-up docs
+evals/       Drift guard + mock LLM harness (run via bash evals/run.sh)
+nginx/       Reverse-proxy configuration (single-site default)
+ops/         Operational scripts (backup, portearchive subpath deploy)
+ui/          Frontend — HTML + CSS + JavaScript (no build step)
 ```
 
 Regenerate prompt C arrays with `make prompts` after editing any
