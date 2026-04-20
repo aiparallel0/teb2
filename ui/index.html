@@ -7,11 +7,11 @@
 <body>
 <header><h1>teb2 <span class="alpha">alpha</span></h1>
 <div class="banner">Developer preview. Features not yet shipped are tracked in <a href="https://github.com/aiparallel0/teb2/blob/main/docs/FOLLOWUPS.md" target="_blank" rel="noopener">docs/FOLLOWUPS.md</a>.</div>
-<div id="auth-bar"><span id="health"></span>
-<input id="email" type="text" placeholder="email">
-<input id="password" type="password" placeholder="password">
-<button onclick="doLogin()">Login</button><button onclick="doRegister()">Register</button>
-<button class="danger" onclick="doLogout()">Logout</button></div></header>
+<div id="auth-bar"><span id="health"></span><span id="who"></span>
+<input id="email" type="email" placeholder="email" data-auth="out" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="username">
+<input id="password" type="password" placeholder="password" data-auth="out" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password">
+<button data-auth="out" onclick="doLogin()">Login</button><button data-auth="out" onclick="doRegister()">Register</button>
+<button data-auth="in" class="danger" onclick="doLogout()">Logout</button></div></header>
 <nav>
 <button data-view="goals" class="active" onclick="showView('goals')">Goals</button>
 <button data-view="tasks" onclick="showView('tasks')">Tasks</button>
@@ -159,7 +159,7 @@
 </footer>
 <script src="app.js"></script><script src="goals.js"></script>
 <script src="tasks.js"></script><script src="finance.js"></script>
-<script src="collab.js"></script><script src="dash.js"></script>
+<script src="collab.js"></script><script src="dash.js"></script><script src="workflows.js"></script>
 <script src="enterprise.js"></script><script src="analytics.js"></script>
 <script src="approvals.js"></script><script src="prompts.js"></script>
 </body>

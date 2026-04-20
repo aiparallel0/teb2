@@ -33,7 +33,7 @@ HttpResp handle_goal_get(HttpReq req, Ctx *ctx)
 {
     GoalQuery q;
     GoalResult gr;
-    char buf[1024], et[512], es[64];
+    char buf[2048], et[512], es[64];
     const char *idstr;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_GOAL_READ))
@@ -45,11 +45,17 @@ HttpResp handle_goal_get(HttpReq req, Ctx *ctx)
     gr = fetch_goal(ctx->db, q);
     if (gr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (gr.err != ERR_OK)        return json_error(500, "db_error");
-    json_escape(gr.rows[0].title, et, sizeof(et));
-    json_escape(gr.rows[0].status, es, sizeof(es));
-    snprintf(buf, sizeof(buf),
-             "{\"id\":%lld,\"title\":\"%s\",\"status\":\"%s\"}",
-             (long long)gr.rows[0].id, et, es);
+    {
+        char ed[1024];
+        json_escape(gr.rows[0].title, et, sizeof(et));
+        json_escape(gr.rows[0].status, es, sizeof(es));
+        json_escape(gr.rows[0].description, ed, sizeof(ed));
+        snprintf(buf, sizeof(buf),
+                 "{\"id\":%lld,\"title\":\"%s\",\"status\":\"%s\","
+                 "\"description\":\"%s\",\"created_at\":%lld}",
+                 (long long)gr.rows[0].id, et, es, ed,
+                 (long long)gr.rows[0].created_at);
+    }
     return json_ok(buf);
 }
 
@@ -75,10 +81,14 @@ HttpResp handle_goal_list(HttpReq req, Ctx *ctx)
                    (long long)next_cursor);
     for (i = 0; i < gr.count; i++) {
         if (pos < 0 || (size_t)pos >= sizeof(buf) - 2) break;
-        json_escape(gr.rows[i].title, et, sizeof(et));
-        added = snprintf(buf + pos, sizeof(buf) - (size_t)pos,
-                        "%s{\"id\":%lld,\"title\":\"%s\"}",
-                        i ? "," : "", (long long)gr.rows[i].id, et);
+        {
+            char es2[64];
+            json_escape(gr.rows[i].title, et, sizeof(et));
+            json_escape(gr.rows[i].status, es2, sizeof(es2));
+            added = snprintf(buf + pos, sizeof(buf) - (size_t)pos,
+                "%s{\"id\":%lld,\"title\":\"%s\",\"status\":\"%s\"}",
+                i ? "," : "", (long long)gr.rows[i].id, et, es2);
+        }
         if (added > 0) pos += added;
     }
     if (pos >= 0 && (size_t)pos < sizeof(buf) - 3)

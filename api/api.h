@@ -156,5 +156,6 @@ HttpResp handle_ui_enterprisejs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_analyticsjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_approvalsjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_promptsjs(HttpReq req, Ctx *ctx);
+HttpResp handle_ui_workflowsjs(HttpReq req, Ctx *ctx);
 
 #endif /* API_H */
