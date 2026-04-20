@@ -22,6 +22,7 @@ SRCS = core/config.c core/ratelimit.c core/llm.c core/prompts.c core/sanitize.c 
 	     db/assets.c db/workflow.c db/wf_steps.c db/search.c db/audit.c \
 	     exec/vault.c exec/http.c exec/browser.c exec/browser_spawn.c \
 	     exec/notify.c exec/sse.c exec/smtp.c exec/oauth_http.c exec/tls.c \
+	     exec/run_spawn.c \
 	     agents/coord.c agents/clarify.c agents/finance.c agents/outreach.c \
 	     agents/research.c agents/measure.c agents/learn.c agents/util.c \
 	     agents/decompose.c agents/plugin.c agents/oauth.c \
@@ -36,7 +37,7 @@ SRCS = core/config.c core/ratelimit.c core/llm.c core/prompts.c core/sanitize.c 
 	     api/assets.c api/notify.c api/workflow.c api/run_cancel.c \
 	     api/search.c \
 	     api/metrics.c api/oauth.c api/static.c api/limits.c \
-	     api/dispatch.c \
+	     api/dispatch.c api/server_loop.c \
 	     main.c
 
 OBJS = $(SRCS:.c=.o)
