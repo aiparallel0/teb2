@@ -55,6 +55,7 @@ static HttpResp dispatch_ui(HttpReq req, Ctx *ctx)
     if (strcmp(p, "/analytics.js") == 0) return handle_ui_analyticsjs(req, ctx);
     if (strcmp(p, "/approvals.js") == 0) return handle_ui_approvalsjs(req, ctx);
     if (strcmp(p, "/prompts.js") == 0)   return handle_ui_promptsjs(req, ctx);
+    if (strcmp(p, "/workflows.js") == 0) return handle_ui_workflowsjs(req, ctx);
     if (strcmp(p, "/healthz") == 0) return handle_healthz(req, ctx);
     if (strcmp(p, "/metrics") == 0) return handle_metrics(req, ctx);
     { HttpResp nr; memset(&nr, 0, sizeof(nr)); return nr; }

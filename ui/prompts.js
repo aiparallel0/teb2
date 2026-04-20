@@ -10,7 +10,7 @@ window.load_prompts = function () {
 function render_list(r) {
     var el = document.getElementById("prompt-list");
     if (!el) return;
-    if (r.error) { teb.empty("prompt-list", r.error); return; }
+    if (r.error) { teb.empty("prompt-list", r._status === 403 ? "Prompt registry is admin-only" : teb.errmsg(r, "Could not load prompts")); return; }
     var names = r.names || [];
     if (names.length === 0) {
         teb.empty("prompt-list", "No prompts registered");

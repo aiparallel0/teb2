@@ -54,7 +54,7 @@ HttpResp handle_task_status(HttpReq req, Ctx *ctx)
 {
     TaskQuery q;
     TaskResult tr;
-    char buf[256], es[64];
+    char buf[2048], es[64];
     const char *idstr;
     if (!ctx || !ctx->user) return json_error(401, "unauthorized");
     if (!rbac_allow(ctx->user->role, PERM_TASK_READ))
@@ -66,10 +66,19 @@ HttpResp handle_task_status(HttpReq req, Ctx *ctx)
     tr = fetch_task(ctx->db, q);
     if (tr.err == ERR_NOT_FOUND) return json_error(404, "not_found");
     if (tr.err != ERR_OK)        return json_error(500, "db_error");
-    json_escape(tr.rows[0].status, es, sizeof(es));
-    snprintf(buf, sizeof(buf),
-             "{\"id\":%lld,\"status\":\"%s\"}",
-             (long long)tr.rows[0].id, es);
+    {
+        char et[512], ed[1024], ea[128];
+        json_escape(tr.rows[0].status, es, sizeof(es));
+        json_escape(tr.rows[0].title, et, sizeof(et));
+        json_escape(tr.rows[0].description, ed, sizeof(ed));
+        json_escape(tr.rows[0].agent, ea, sizeof(ea));
+        snprintf(buf, sizeof(buf),
+            "{\"id\":%lld,\"goal_id\":%lld,\"title\":\"%s\","
+            "\"status\":\"%s\",\"agent\":\"%s\","
+            "\"description\":\"%s\"}",
+            (long long)tr.rows[0].id, (long long)tr.rows[0].goal_id,
+            et, es, ea, ed);
+    }
     return json_ok(buf);
 }
 
@@ -120,10 +129,17 @@ HttpResp handle_task_list(HttpReq req, Ctx *ctx)
                    (long long)next_cursor);
     for (i = 0; i < tr.count && pos > 0 && (size_t)pos < sizeof(buf) - 2;
          i++) {
-        json_escape(tr.rows[i].title, et, sizeof(et));
-        added = snprintf(buf + pos, sizeof(buf) - (size_t)pos,
-                        "%s{\"id\":%lld,\"title\":\"%s\"}",
-                        i ? "," : "", (long long)tr.rows[i].id, et);
+        {
+            char es2[64], ea[128];
+            json_escape(tr.rows[i].title, et, sizeof(et));
+            json_escape(tr.rows[i].status, es2, sizeof(es2));
+            json_escape(tr.rows[i].agent, ea, sizeof(ea));
+            added = snprintf(buf + pos, sizeof(buf) - (size_t)pos,
+                "%s{\"id\":%lld,\"goal_id\":%lld,\"title\":\"%s\","
+                "\"status\":\"%s\",\"agent\":\"%s\"}",
+                i ? "," : "", (long long)tr.rows[i].id,
+                (long long)tr.rows[i].goal_id, et, es2, ea);
+        }
         if (added > 0) pos += added;
     }
     if (pos > 0 && (size_t)pos < sizeof(buf) - 3)

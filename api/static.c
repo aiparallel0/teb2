@@ -103,3 +103,9 @@ HttpResp handle_ui_promptsjs(HttpReq req, Ctx *ctx)
     (void)req; (void)ctx;
     return serve_file("ui/prompts.js", "application/javascript");
 }
+
+HttpResp handle_ui_workflowsjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/workflows.js", "application/javascript");
+}
