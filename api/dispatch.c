@@ -84,6 +84,8 @@ static HttpResp dispatch_core(HttpReq req, Ctx *ctx)
     if (strcmp(p, "/auth/register") == 0) return handle_register(req, ctx);
     if (strcmp(p, "/auth/login") == 0)    return handle_login(req, ctx);
     if (strcmp(p, "/auth/refresh") == 0)  return handle_refresh(req, ctx);
+    if (strcmp(p, "/auth/forgot") == 0)   return handle_forgot(req, ctx);
+    if (strcmp(p, "/auth/reset") == 0)    return handle_reset(req, ctx);
     if (strncmp(p, "/sse/chat/", 10) == 0 && strcmp(req.method, "GET") == 0)
         return handle_sse_subscribe(req, ctx);
     return dispatch_ext(req, ctx);
@@ -102,7 +104,9 @@ static HttpResp dispatch_internal(HttpReq req, Ctx *ctx)
     }
     rlkey = req.fwd_for[0] ? req.fwd_for : "unknown";
     if (strcmp(req.path, "/auth/register") == 0 ||
-        strcmp(req.path, "/auth/login") == 0) {
+        strcmp(req.path, "/auth/login") == 0 ||
+        strcmp(req.path, "/auth/forgot") == 0 ||
+        strcmp(req.path, "/auth/reset") == 0) {
         if (!rl_check(rlkey, 10))  return json_error(429, "rate_limited");
     } else {
         if (!rl_check(rlkey, 120)) return json_error(429, "rate_limited");

@@ -100,6 +100,25 @@ window.doRegister = function () {
         window.doLogin();
     });
 };
+window.doForgot = function () {
+    var e = document.getElementById("email").value.trim();
+    var np = document.getElementById("password").value;
+    if (!e) { teb.err("Enter your email, then click Forgot?"); return; }
+    if (!np || np.length < 8) {
+        teb.err("Type the NEW password (min 8 chars) in the password field, then click Forgot?");
+        return;
+    }
+    teb.api("POST", "/auth/forgot", { email: e }).then(function (r) {
+        if (r.error) { teb.err(teb.errmsg(r, "Reset request failed")); return; }
+        var t = window.prompt("A reset token was emailed to " + e +
+                              ".\nPaste the token here to apply the new password:");
+        if (!t) return;
+        teb.api("POST", "/auth/reset", { token: t.trim(), password: np }).then(function (r2) {
+            if (r2.error) { teb.err(teb.errmsg(r2, "Reset failed")); return; }
+            teb.err(""); teb.info("Password updated — you can sign in now");
+        });
+    });
+};
 window.doLogout = function () {
     teb.token(""); teb.email(""); localStorage.removeItem("teb2_token");
     localStorage.removeItem("teb2_email");

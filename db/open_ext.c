@@ -135,7 +135,14 @@ static const char *SCHEMA_C =
     "id INTEGER PRIMARY KEY AUTOINCREMENT,"
     "user_id TEXT NOT NULL,name TEXT NOT NULL,"
     "body TEXT NOT NULL,updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),"
-    "UNIQUE(user_id,name));";
+    "UNIQUE(user_id,name));"
+
+    "CREATE TABLE IF NOT EXISTS password_resets("
+    "token TEXT PRIMARY KEY,"
+    "user_id INTEGER NOT NULL,"
+    "expiry INTEGER NOT NULL,"
+    "used INTEGER NOT NULL DEFAULT 0,"
+    "created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')));";
 
 static Err run_sql(sqlite3 *h, const char *sql)
 {
