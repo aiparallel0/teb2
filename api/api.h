@@ -5,7 +5,6 @@
 #include "core/types.h"
 
 /* HttpReq.body max is 8191 bytes; larger payloads are truncated. */
-
 /* api/server.c */
 HttpReq  parse_request(const char *raw, size_t len);
 HttpResp dispatch(HttpReq req, Ctx *ctx);
@@ -13,8 +12,7 @@ void     write_response(int fd, HttpResp resp);
 
 /* api/limits.c */
 void     socket_set_deadlines(int fd, int read_sec, int write_sec);
-ssize_t  slowloris_read(int fd, char *buf, size_t cap, int deadline_sec)
-    __attribute__((warn_unused_result));
+ssize_t  slowloris_read(int fd, char *buf, size_t cap, int deadline_sec) __attribute__((warn_unused_result));
 
 /* api/goals.c */
 HttpResp handle_goal_create(HttpReq req, Ctx *ctx);
@@ -73,8 +71,7 @@ HttpResp handle_refresh(HttpReq req, Ctx *ctx);
 HttpResp handle_forgot(HttpReq req, Ctx *ctx);
 HttpResp handle_reset(HttpReq req, Ctx *ctx);
 
-TokenResult authenticate_request(HttpReq req, const char *secret)
-    __attribute__((warn_unused_result));
+TokenResult authenticate_request(HttpReq req, const char *secret) __attribute__((warn_unused_result));
 
 /* api/collab.c */
 HttpResp handle_ws_create(HttpReq req, Ctx *ctx);
@@ -161,5 +158,9 @@ HttpResp handle_ui_analyticsjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_approvalsjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_promptsjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_workflowsjs(HttpReq req, Ctx *ctx);
+
+/* api/server_loop.c */
+void server_install_signals(void);
+int  server_start(Config *cfg, Db *db) __attribute__((warn_unused_result));
 
 #endif /* API_H */

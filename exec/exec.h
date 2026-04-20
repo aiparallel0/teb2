@@ -5,6 +5,7 @@
 #include "core/types.h"
 #include "core/errors.h"
 #include "core/types_collab.h"
+#include "core/types_ext.h"
 
 CipherResult  vault_encrypt(Bytes plaintext, Key8 key)
     __attribute__((warn_unused_result));
@@ -47,6 +48,21 @@ int browser_spawn(BrowserProc *proc) __attribute__((warn_unused_result));
 ssize_t tls_request(const char *host, int port,
                     const char *req_buf, size_t req_len,
                     char *resp_buf, size_t resp_cap)
+    __attribute__((warn_unused_result));
+
+/* exec/run_spawn.c — fork a child to execute a workflow run.
+ * Owns all I/O: fork(), signal(SIGALRM), alarm(), child db_open,
+ * execute_steps, update_run_status, db_close; parent update_run_pid
+ * and update_run_status("running"). */
+typedef struct {
+    int64_t    run_id;
+    int        timeout_sec;
+    TaskResult tasks;
+} RunSpawnReq;
+
+typedef struct { Err err; int pid; } RunSpawnResult;
+
+RunSpawnResult exec_run_spawn(RunSpawnReq req, Ctx *ctx)
     __attribute__((warn_unused_result));
 
 #endif /* EXEC_H */
