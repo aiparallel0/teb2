@@ -200,6 +200,40 @@ else
     info "  No running teb2-app container — skipping backup"
 fi
 
+# ── 6b. TLS certificates (Let's Encrypt via certbot one-shot) ────────────────
+info "Step 6b/9 — ensure TLS certificates for \${DOMAIN:-<unset>}"
+
+if [[ -n "${DOMAIN:-}" ]]; then
+    LIVE_DIR="/etc/letsencrypt/live/${DOMAIN}"
+    if [[ -s "${LIVE_DIR}/fullchain.pem" && -s "${LIVE_DIR}/privkey.pem" ]]; then
+        info "  Certificates already present at ${LIVE_DIR} — skipping certbot"
+    else
+        info "  No certificates found for ${DOMAIN}; bootstrapping"
+        mkdir -p "${LIVE_DIR}" "${INSTALL_DIR}/nginx/acme"
+        # Self-signed placeholder so nginx can start; certbot will overwrite it.
+        if [[ ! -s "${LIVE_DIR}/fullchain.pem" ]]; then
+            openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                -keyout "${LIVE_DIR}/privkey.pem" \
+                -out    "${LIVE_DIR}/fullchain.pem" \
+                -subj   "/CN=${DOMAIN}" >/dev/null 2>&1
+            info "  Wrote self-signed placeholder for ${DOMAIN}"
+        fi
+        # Bring nginx up so /.well-known/acme-challenge/ is reachable on :80,
+        # then run the one-shot certbot service to obtain a real cert.
+        $COMPOSE -f docker-compose.yml up -d --build nginx app
+        info "  Requesting Let's Encrypt certificate via webroot challenge"
+        if DOMAIN="${DOMAIN}" CERTBOT_EMAIL="${CERTBOT_EMAIL:-}" \
+             $COMPOSE -f docker-compose.yml run --rm certbot; then
+            info "  Certificate obtained; reloading nginx"
+            docker exec "$(docker ps -qf name=nginx | head -n1)" nginx -s reload || true
+        else
+            warn "  certbot failed — leaving placeholder in place. Re-run after DNS + :80 reachable."
+        fi
+    fi
+else
+    info "  DOMAIN not set — skipping TLS bootstrap (HTTP-only setup)"
+fi
+
 # ── 7. Build and launch ───────────────────────────────────────────────────────
 info "Step 7/9 — build image and start services"
 
