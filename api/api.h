@@ -69,6 +69,10 @@ HttpResp handle_register(HttpReq req, Ctx *ctx);
 HttpResp handle_login(HttpReq req, Ctx *ctx);
 HttpResp handle_refresh(HttpReq req, Ctx *ctx);
 
+/* api/forgot.c */
+HttpResp handle_forgot(HttpReq req, Ctx *ctx);
+HttpResp handle_reset(HttpReq req, Ctx *ctx);
+
 TokenResult authenticate_request(HttpReq req, const char *secret)
     __attribute__((warn_unused_result));
 

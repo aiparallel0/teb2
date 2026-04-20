@@ -58,6 +58,9 @@ HttpResp handle_register(HttpReq req, Ctx *ctx)
     if (!extract_json_str(req.body, "\"password\"", password,
                           sizeof(password)))
         return json_error(400, "missing_password");
+    if (!strchr(email, '@')) return json_error(400, "invalid_email");
+    if (strlen(password) < 8)
+        return json_error(400, "password_too_short");
     hcfg = default_hash_config();
     hr   = hash_password(password, hcfg);
     if (hr.err != ERR_OK) return json_error(500, "hash_error");

@@ -130,6 +130,15 @@ OverrideResult fetch_override(Db *db, const char *user_id, const char *name)
 Err delete_override(Db *db, const char *user_id, const char *name)
     __attribute__((warn_unused_result));
 
+/* password_resets — single-use password reset tokens */
+Err create_password_reset(Db *db, int64_t user_id,
+                          const char *token, int64_t expiry)
+    __attribute__((warn_unused_result));
+Err consume_password_reset(Db *db, const char *token, int64_t *user_id_out)
+    __attribute__((warn_unused_result));
+Err update_user_password(Db *db, int64_t user_id, const char *password_hash)
+    __attribute__((warn_unused_result));
+
 /* workflow — run PID tracking */
 Err update_run_pid(Db *db, int64_t run_id, int64_t pid)
     __attribute__((warn_unused_result));
