@@ -126,7 +126,8 @@ HttpResp handle_login(HttpReq req, Ctx *ctx)
     tr = make_ticket(claims, ctx->cfg->secret);
     if (tr.err != ERR_OK) return json_error(500, "token_error");
     ticket_to_hex(&tr.ticket, hex, sizeof(hex));
-    snprintf(body, sizeof(body), "{\"token\":\"%s\"}", hex);
+    snprintf(body, sizeof(body), "{\"token\":\"%s\",\"role\":\"%s\"}", hex,
+             claims.role == ROLE_ADMIN ? "admin" : "user");
     return json_ok(body);
 }
 

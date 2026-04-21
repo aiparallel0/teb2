@@ -56,6 +56,10 @@ static void apply_env_line(const char *line, Config *cfg)
         cfg->run_timeout_sec = atoi(eq + 1);
     else if (strcmp(key, "WORKERS") == 0)
         cfg->workers = atoi(eq + 1);
+    else if (strcmp(key, "ADMIN_EMAIL") == 0)
+        copy_strip(cfg->admin_email, sizeof(cfg->admin_email), eq + 1);
+    else if (strcmp(key, "ADMIN_PASSWORD") == 0)
+        copy_strip(cfg->admin_password, sizeof(cfg->admin_password), eq + 1);
 }
 
 Config load_config(const char *env_path)
@@ -98,6 +102,8 @@ Config load_config(const char *env_path)
     if ((v = getenv("LLM_RETRIES")))   cfg.llm_retries = atoi(v);
     if ((v = getenv("RUN_TIMEOUT_SEC")))cfg.run_timeout_sec = atoi(v);
     if ((v = getenv("WORKERS")))        cfg.workers = atoi(v);
+    if ((v = getenv("ADMIN_EMAIL")))    snprintf(cfg.admin_email,    sizeof(cfg.admin_email),    "%s", v);
+    if ((v = getenv("ADMIN_PASSWORD"))) snprintf(cfg.admin_password, sizeof(cfg.admin_password), "%s", v);
 
     return cfg;
 }

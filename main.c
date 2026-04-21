@@ -23,6 +23,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "db_open failed: %s\n", cfg.db_path);
         return 1;
     }
+    seed_admin_account(&db, &cfg);
     server_install_signals();
     teb_log_info("main", "teb2 starting port=%d workers=%d timeout=%ds",
                  cfg.port, cfg.workers, cfg.run_timeout_sec);

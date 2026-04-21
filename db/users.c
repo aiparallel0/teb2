@@ -51,6 +51,44 @@ UserResult fetch_user(Db *db, UserQuery q)
     return r;
 }
 
+Err update_user_role(Db *db, int64_t user_id, UserRole role)
+{
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "UPDATE users SET role=? WHERE id=?;";
+    Err err;
+    if (!db || !db->handle) return ERR_DB;
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK)
+        return ERR_DB;
+    sqlite3_bind_int(stmt,   1, (int)role);
+    sqlite3_bind_int64(stmt, 2, user_id);
+    err = (sqlite3_step(stmt) == SQLITE_DONE) ? ERR_OK : ERR_DB;
+    sqlite3_finalize(stmt);
+    return err;
+}
+
+UserListResult list_users(Db *db, int limit)
+{
+    UserListResult r;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id,email,password_hash,role FROM users ORDER BY id LIMIT ?;";
+    int i = 0;
+    memset(&r, 0, sizeof(r));
+    if (!db || !db->handle) { r.err = ERR_DB; return r; }
+    if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        r.err = ERR_DB; return r;
+    }
+    sqlite3_bind_int(stmt, 1, limit > 0 ? limit : 50);
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < 50) {
+        r.rows[i] = row_to_user(stmt);
+        i++;
+    }
+    r.count = i;
+    r.err = ERR_OK;
+    sqlite3_finalize(stmt);
+    return r;
+}
+
 UserResult store_user(Db *db, UserQuery q)
 {
     UserResult r;
