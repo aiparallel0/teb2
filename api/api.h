@@ -1,6 +1,5 @@
 #ifndef API_H
 #define API_H
-
 #include <sys/types.h>
 #include "core/types.h"
 
@@ -66,12 +65,13 @@ HttpResp handle_spend_record(HttpReq req, Ctx *ctx);
 HttpResp handle_register(HttpReq req, Ctx *ctx);
 HttpResp handle_login(HttpReq req, Ctx *ctx);
 HttpResp handle_refresh(HttpReq req, Ctx *ctx);
+void     auth_email_normalize(char *s);
+
+TokenResult authenticate_request(HttpReq req, const char *secret) __attribute__((warn_unused_result));
 
 /* api/forgot.c */
 HttpResp handle_forgot(HttpReq req, Ctx *ctx);
 HttpResp handle_reset(HttpReq req, Ctx *ctx);
-
-TokenResult authenticate_request(HttpReq req, const char *secret) __attribute__((warn_unused_result));
 
 /* api/collab.c */
 HttpResp handle_ws_create(HttpReq req, Ctx *ctx);

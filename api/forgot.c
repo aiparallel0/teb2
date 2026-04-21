@@ -80,6 +80,7 @@ HttpResp handle_forgot(HttpReq req, Ctx *ctx)
         return json_error(503, "email_not_configured");
     if (!extract_json_str(req.body, "\"email\"", email, sizeof(email)))
         return json_error(400, "missing_email");
+    auth_email_normalize(email);
     if (!strchr(email, '@')) return json_error(400, "invalid_email");
 
     memset(&uq, 0, sizeof(uq));

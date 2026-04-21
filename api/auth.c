@@ -29,6 +29,18 @@ static int hex_to_ticket(const char *hex, Ticket *out)
     return 0;
 }
 
+/* Lowercase an ASCII string in place. Emails are case-insensitive per
+ * RFC 5321 §2.4 (local part is implementation-defined but every major
+ * provider treats it as case-insensitive), so we normalise on register,
+ * login, and forgot to avoid "user@x" vs "User@x" mismatches that would
+ * otherwise surface as 401 invalid_credentials on login after a
+ * succeeded register. */
+void auth_email_normalize(char *s)
+{
+    for (; *s; s++)
+        if (*s >= 'A' && *s <= 'Z') *s |= 0x20;
+}
+
 TokenResult authenticate_request(HttpReq req, const char *secret)
 {
     TokenResult r;
@@ -55,6 +67,7 @@ HttpResp handle_register(HttpReq req, Ctx *ctx)
     if (!ctx || !ctx->db) return json_error(500, "no_db");
     if (!extract_json_str(req.body, "\"email\"", email, sizeof(email)))
         return json_error(400, "missing_email");
+    auth_email_normalize(email);
     if (!extract_json_str(req.body, "\"password\"", password,
                           sizeof(password)))
         return json_error(400, "missing_password");
@@ -90,6 +103,7 @@ HttpResp handle_login(HttpReq req, Ctx *ctx)
     if (!ctx || !ctx->db || !ctx->cfg) return json_error(500, "no_ctx");
     if (!extract_json_str(req.body, "\"email\"", email, sizeof(email)))
         return json_error(400, "missing_email");
+    auth_email_normalize(email);
     if (!extract_json_str(req.body, "\"password\"", password,
                           sizeof(password)))
         return json_error(400, "missing_password");
