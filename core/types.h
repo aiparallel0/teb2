@@ -18,8 +18,8 @@ typedef struct {
     char smtp_host[256]; int smtp_port; char smtp_user[128]; char smtp_pass[128];
     char openai_key[128]; char openai_model[64]; char llm_base_url[128];
     int llm_max_tokens; int run_timeout_sec; int llm_retries;
+    char admin_email[128]; char admin_password[128];
 } Config;
-
 typedef struct {
     int64_t  id;
     char     user_id[64];
@@ -84,7 +84,6 @@ typedef struct {
     size_t body_len;
     char   content_type[64];
 } HttpResp;
-
 typedef struct { char url[512]; char method[8]; char body[4096]; } SerialReq;
 typedef struct { char action[64]; char target[256]; char value[512]; } SerialCmd;
 
@@ -108,6 +107,7 @@ typedef struct {
     char email[128]; char password_hash[128]; UserRole role;
 } UserQuery;
 typedef struct { Err err; User user; } UserResult;
+typedef struct { Err err; User rows[50]; int count; } UserListResult;
 
 typedef struct {
     int64_t id;

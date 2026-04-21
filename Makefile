@@ -29,7 +29,7 @@ SRCS = core/config.c core/ratelimit.c core/llm.c core/prompts.c core/sanitize.c 
 	     agents/exec.c agents/router.c \
 	     api/server.c api/json.c api/escape.c api/goals.c api/tasks.c \
 	     api/auth.c api/outcomes.c api/nudges.c api/learn.c api/exec.c \
-	     api/forgot.c \
+	     api/forgot.c api/admin.c \
 	     api/decompose.c api/schedules.c api/budgets.c api/routes.c \
 	     api/approvals.c api/prompts.c api/prompt_edit.c \
 	     api/collab.c api/integrations.c api/enterprise.c api/analytics.c \

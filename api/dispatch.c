@@ -56,6 +56,7 @@ static HttpResp dispatch_ui(HttpReq req, Ctx *ctx)
     if (strcmp(p, "/approvals.js") == 0) return handle_ui_approvalsjs(req, ctx);
     if (strcmp(p, "/prompts.js") == 0)   return handle_ui_promptsjs(req, ctx);
     if (strcmp(p, "/workflows.js") == 0) return handle_ui_workflowsjs(req, ctx);
+    if (strcmp(p, "/admin.js") == 0)     return handle_ui_adminjs(req, ctx);
     if (strcmp(p, "/healthz") == 0) return handle_healthz(req, ctx);
     if (strcmp(p, "/metrics") == 0) return handle_metrics(req, ctx);
     { HttpResp nr; memset(&nr, 0, sizeof(nr)); return nr; }
@@ -86,6 +87,12 @@ static HttpResp dispatch_core(HttpReq req, Ctx *ctx)
     if (strcmp(p, "/auth/refresh") == 0)  return handle_refresh(req, ctx);
     if (strcmp(p, "/auth/forgot") == 0)   return handle_forgot(req, ctx);
     if (strcmp(p, "/auth/reset") == 0)    return handle_reset(req, ctx);
+    if (strcmp(p, "/admin/stats") == 0 && strcmp(req.method, "GET") == 0)
+        return handle_admin_stats(req, ctx);
+    if (strcmp(p, "/admin/users") == 0 && strcmp(req.method, "GET") == 0)
+        return handle_admin_users(req, ctx);
+    if (strncmp(p, "/admin/users/", 13) == 0 && strcmp(req.method, "POST") == 0)
+        return handle_admin_role(req, ctx);
     if (strncmp(p, "/sse/chat/", 10) == 0 && strcmp(req.method, "GET") == 0)
         return handle_sse_subscribe(req, ctx);
     return dispatch_ext(req, ctx);

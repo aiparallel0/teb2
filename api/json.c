@@ -27,18 +27,30 @@ HttpResp json_ok(const char *body)
     return r;
 }
 
+/* Extract a JSON string value. Decodes the common backslash escapes
+ * (\", \\, \/, \n, \r, \t, \b, \f) so a password containing a quote or
+ * backslash round-trips correctly through /auth/register + /auth/login
+ * instead of being silently truncated at the first literal '"' byte.
+ * \uXXXX is not decoded; it passes through as-is, which is fine for
+ * ASCII emails and passwords. */
 int extract_json_str(const char *body, const char *key,
                      char *out, size_t outsz)
 {
     const char *k = strstr(body, key);
-    const char *v;
-    size_t i;
-    if (!k) return 0;
+    size_t i = 0;
+    if (!k || outsz == 0) return 0;
     k += strlen(key);
     while (*k == ' ' || *k == ':' || *k == '"') k++;
-    v = k;
-    for (i = 0; i < outsz - 1 && v[i] != '\0' && v[i] != '"'; i++)
-        out[i] = v[i];
+    while (*k && *k != '"' && i + 1 < outsz) {
+        if (*k == '\\' && k[1]) {
+            char c = k[1], d = c;
+            if (c == 'n') d = '\n'; else if (c == 'r') d = '\r';
+            else if (c == 't') d = '\t'; else if (c == 'b') d = '\b';
+            else if (c == 'f') d = '\f';
+            out[i++] = d; k += 2; continue;
+        }
+        out[i++] = *k++;
+    }
     out[i] = '\0';
     return i > 0 ? 1 : 0;
 }

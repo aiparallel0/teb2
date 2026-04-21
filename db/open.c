@@ -120,7 +120,8 @@ static const char *SCHEMA =
     "next_action TEXT NOT NULL DEFAULT '',"
     "score_0_100 INTEGER NOT NULL DEFAULT 0,"
     "attempts INTEGER NOT NULL DEFAULT 0,"
-    "FOREIGN KEY (task_id) REFERENCES tasks(id));";
+    "FOREIGN KEY (task_id) REFERENCES tasks(id));"
+    "UPDATE OR IGNORE users SET email=LOWER(email) WHERE email<>LOWER(email);";
 
 Err db_open(const char *path, Db *out)
 {

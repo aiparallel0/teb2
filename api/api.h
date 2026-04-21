@@ -1,6 +1,5 @@
 #ifndef API_H
 #define API_H
-
 #include <sys/types.h>
 #include "core/types.h"
 
@@ -62,16 +61,23 @@ HttpResp handle_budget_create(HttpReq req, Ctx *ctx);
 HttpResp handle_budget_get(HttpReq req, Ctx *ctx);
 HttpResp handle_spend_record(HttpReq req, Ctx *ctx);
 
+/* api/admin.c */
+HttpResp handle_admin_stats(HttpReq req, Ctx *ctx);
+HttpResp handle_admin_users(HttpReq req, Ctx *ctx);
+HttpResp handle_admin_role(HttpReq req, Ctx *ctx);
+void     seed_admin_account(Db *db, Config *cfg);
+
 /* api/auth.c */
 HttpResp handle_register(HttpReq req, Ctx *ctx);
 HttpResp handle_login(HttpReq req, Ctx *ctx);
 HttpResp handle_refresh(HttpReq req, Ctx *ctx);
+void     auth_email_normalize(char *s);
+
+TokenResult authenticate_request(HttpReq req, const char *secret) __attribute__((warn_unused_result));
 
 /* api/forgot.c */
 HttpResp handle_forgot(HttpReq req, Ctx *ctx);
 HttpResp handle_reset(HttpReq req, Ctx *ctx);
-
-TokenResult authenticate_request(HttpReq req, const char *secret) __attribute__((warn_unused_result));
 
 /* api/collab.c */
 HttpResp handle_ws_create(HttpReq req, Ctx *ctx);
@@ -109,28 +115,21 @@ HttpResp handle_vote_upsert(HttpReq req, Ctx *ctx);
 
 /* api/sse.c */
 HttpResp handle_sse_subscribe(HttpReq req, Ctx *ctx);
-
 /* api/routes.c */
 HttpResp dispatch_ext(HttpReq req, Ctx *ctx);
-
 /* api/assets.c */
 HttpResp handle_asset_upload(HttpReq req, Ctx *ctx);
 HttpResp handle_asset_get(HttpReq req, Ctx *ctx);
-
 /* api/notify.c */
 HttpResp handle_notify_email(HttpReq req, Ctx *ctx);
-
 /* api/workflow.c */
 HttpResp handle_run_create(HttpReq req, Ctx *ctx);
-
 /* api/run_cancel.c */
 HttpResp handle_run_get(HttpReq req, Ctx *ctx);
 HttpResp handle_run_cancel(HttpReq req, Ctx *ctx);
-
 /* api/prompt_edit.c */
 HttpResp handle_prompt_edit(HttpReq req, Ctx *ctx);
 HttpResp handle_prompt_delete(HttpReq req, Ctx *ctx);
-
 /* api/search.c */
 HttpResp handle_search(HttpReq req, Ctx *ctx);
 
@@ -158,6 +157,7 @@ HttpResp handle_ui_analyticsjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_approvalsjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_promptsjs(HttpReq req, Ctx *ctx);
 HttpResp handle_ui_workflowsjs(HttpReq req, Ctx *ctx);
+HttpResp handle_ui_adminjs(HttpReq req, Ctx *ctx);
 
 /* api/server_loop.c */
 void server_install_signals(void);

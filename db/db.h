@@ -24,6 +24,8 @@ TaskResult update_task(Db *db, TaskQuery q) __attribute__((warn_unused_result));
 
 UserResult fetch_user(Db *db, UserQuery q) __attribute__((warn_unused_result));
 UserResult store_user(Db *db, UserQuery q) __attribute__((warn_unused_result));
+Err        update_user_role(Db *db, int64_t user_id, UserRole role) __attribute__((warn_unused_result));
+UserListResult list_users(Db *db, int limit) __attribute__((warn_unused_result));
 
 OutcomeResult store_outcome(Db *db, OutcomeQuery q) __attribute__((warn_unused_result));
 OutcomeResult fetch_outcome(Db *db, OutcomeQuery q) __attribute__((warn_unused_result));

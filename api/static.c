@@ -109,3 +109,9 @@ HttpResp handle_ui_workflowsjs(HttpReq req, Ctx *ctx)
     (void)req; (void)ctx;
     return serve_file("ui/workflows.js", "application/javascript");
 }
+
+HttpResp handle_ui_adminjs(HttpReq req, Ctx *ctx)
+{
+    (void)req; (void)ctx;
+    return serve_file("ui/admin.js", "application/javascript");
+}

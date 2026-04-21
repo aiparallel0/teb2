@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include <string.h>
+#include <strings.h>
 #include <stdio.h>
 #include <unistd.h>
 #include "core/types.h"
@@ -18,6 +19,26 @@
  * keeps client-side keep-alive; teb2 itself is single-request-per-conn
  * so worker accounting stays trivial.
  */
+
+/* Case-insensitive header lookup: RFC 7230 says field names are
+ * case-insensitive, and HTTP/2 intermediaries normalise them to lower
+ * case before proxying back to HTTP/1.1. A case-sensitive strstr for
+ * "Authorization:" would then silently drop the bearer ticket and every
+ * authenticated request would 401. */
+static const char *find_req_header(const char *raw, const char *name)
+{
+    size_t nlen = strlen(name);
+    const char *p = raw;
+    while ((p = strchr(p, '\n')) != NULL) {
+        p++;
+        if (strncasecmp(p, name, nlen) == 0 && p[nlen] == ':') {
+            const char *v = p + nlen + 1;
+            while (*v == ' ' || *v == '\t') v++;
+            return v;
+        }
+    }
+    return NULL;
+}
 
 HttpReq parse_request(const char *raw, size_t len)
 {
@@ -47,16 +68,14 @@ HttpReq parse_request(const char *raw, size_t len)
             *qm = '\0';
         }
     }
-    auth = strstr(raw, "\nAuthorization: ");
+    auth = find_req_header(raw, "Authorization");
     if (auth) {
-        auth += 16;
-        if (strncmp(auth, "Bearer ", 7) == 0) auth += 7;
+        if (strncasecmp(auth, "Bearer ", 7) == 0) auth += 7;
         snprintf(req.auth_header, sizeof(req.auth_header),
                  "%.*s", (int)(strcspn(auth, "\r\n")), auth);
     }
-    xff = strstr(raw, "\nX-Forwarded-For: ");
+    xff = find_req_header(raw, "X-Forwarded-For");
     if (xff) {
-        xff += 18;
         snprintf(req.fwd_for, sizeof(req.fwd_for),
                  "%.*s", (int)(strcspn(xff, "\r\n,")), xff);
     }
