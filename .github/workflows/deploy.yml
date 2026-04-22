@@ -15,7 +15,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-
     steps:
       - uses: actions/checkout@v4
 
@@ -56,14 +55,16 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: GITHUB_SHA
+          envs: GITHUB_SHA,CR_PAT
           script: |
             set -eu
             cd /opt/teb2
             git fetch --all
             git reset --hard origin/main
             export IMAGE_TAG=sha-$(echo "${GITHUB_SHA}" | cut -c1-7)
+            echo "${CR_PAT}" | docker login ghcr.io -u aiparallel0 --password-stdin
             docker compose pull
-            docker compose up -d
+            docker compose up -d --remove-orphans
         env:
           GITHUB_SHA: ${{ github.sha }}
+          CR_PAT: ${{ secrets.CR_PAT }}
