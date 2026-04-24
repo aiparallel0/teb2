@@ -55,15 +55,19 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: GITHUB_SHA
+          envs: GITHUB_SHA,CR_PAT
           script: |
             set -eu
             cd /opt/teb2
             git fetch --all
             git reset --hard origin/main
             export IMAGE_TAG=sha-$(echo "${GITHUB_SHA}" | cut -c1-7)
-            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
+            echo "${CR_PAT}" | docker login ghcr.io -u aiparallel0 --password-stdin
+            grep -q '^IMAGE_TAG=' .env \
+              && sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env \
+              || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
             docker compose pull
             docker compose up -d --remove-orphans
         env:
           GITHUB_SHA: ${{ github.sha }}
+          CR_PAT: ${{ secrets.CR_PAT }}
