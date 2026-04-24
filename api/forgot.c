@@ -18,10 +18,10 @@
  *
  *   POST /auth/forgot { "email": ... }
  *       Always returns 200 {"ok":true} so callers cannot enumerate which
- *       emails are registered. If the email matches a user and SMTP is
- *       configured, a 32-hex single-use reset token (1h TTL) is emailed
- *       to the user. If SMTP is not configured, returns 503 so operators
- *       learn the feature is disabled rather than silently failing.
+ *       emails are registered. If the email matches a user, a 32-hex
+ *       single-use reset token (1h TTL) is stored and, when SMTP is
+ *       configured, emailed to the user. When SMTP is absent the token
+ *       is logged at WARN level so an operator can relay it manually.
  *
  *   POST /auth/reset  { "token": ..., "password": ... }
  *       Atomically consumes the token and replaces the user's password
@@ -76,8 +76,6 @@ HttpResp handle_forgot(HttpReq req, Ctx *ctx)
     int64_t expiry;
 
     if (!ctx || !ctx->db || !ctx->cfg) return json_error(500, "no_ctx");
-    if (!ctx->cfg->smtp_host[0])
-        return json_error(503, "email_not_configured");
     if (!extract_json_str(req.body, "\"email\"", email, sizeof(email)))
         return json_error(400, "missing_email");
     auth_email_normalize(email);
@@ -94,8 +92,12 @@ HttpResp handle_forgot(HttpReq req, Ctx *ctx)
     if (create_password_reset(ctx->db, ur.user.id, token, expiry) != ERR_OK)
         return json_error(500, "db_error");
     if (email_reset_token(ctx, ur.user.email, token) != ERR_OK) {
-        teb_log_warn("reset", "smtp_send_failed user_id=%lld",
-                     (long long)ur.user.id);
+        if (!ctx->cfg->smtp_host[0])
+            teb_log_warn("forgot", "smtp_disabled reset_token=%s user_id=%lld",
+                         token, (long long)ur.user.id);
+        else
+            teb_log_warn("forgot", "smtp_send_failed user_id=%lld",
+                         (long long)ur.user.id);
         /* Still return ok to avoid enumeration; operator sees log. */
     }
     return json_ok("{\"ok\":true}");

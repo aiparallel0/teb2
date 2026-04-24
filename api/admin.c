@@ -16,10 +16,10 @@
  *
  * seed_admin_account: called once from main.c after db_open. If
  * ADMIN_EMAIL + ADMIN_PASSWORD are set in the env/config, the admin
- * user is created (or promoted) idempotently:
- *   INSERT ... ON CONFLICT DO UPDATE SET role=ROLE_ADMIN
- * The password is only written if the row is freshly inserted; existing
- * rows keep their current password so /auth/reset still works.
+ * user is upserted idempotently on every startup:
+ *   INSERT ... ON CONFLICT DO UPDATE SET role=ROLE_ADMIN, password_hash
+ * Both role and password_hash are always refreshed from the env so
+ * changing ADMIN_PASSWORD and restarting takes effect immediately.
  *
  * Admin API endpoints (all require ROLE_ADMIN):
  *   GET  /admin/stats        — aggregate counts
@@ -49,8 +49,8 @@ void seed_admin_account(Db *db, Config *cfg)
     if (hr.err != ERR_OK) { teb_log_warn("admin", "hash failed"); return; }
     /* Upsert: insert admin or promote existing user; never demote. */
     sql = "INSERT INTO users(email,password_hash,role) VALUES(?,?,1)"
-          " ON CONFLICT(email) DO UPDATE SET role=1"
-          " WHERE role<1;";
+          " ON CONFLICT(email) DO UPDATE SET"
+          " role=1, password_hash=excluded.password_hash;";
     if (sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL) != SQLITE_OK)
         return;
     sqlite3_bind_text(stmt, 1, cfg->admin_email, -1, SQLITE_STATIC);
