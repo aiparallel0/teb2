@@ -66,8 +66,14 @@ jobs:
             grep -q '^IMAGE_TAG=' .env \
               && sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env \
               || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
-            docker compose pull
-            docker compose up -d --remove-orphans
+            # The portearchive.com droplet runs host nginx on :80/:443,
+            # so we only (re)deploy the `app` service on the loopback
+            # port declared in ops/portearchive/compose.yml. Starting the
+            # base compose's `nginx` service here would collide with the
+            # host nginx and fail with "address already in use".
+            COMPOSE_FILES="-f docker-compose.yml -f ops/portearchive/compose.yml"
+            docker compose $COMPOSE_FILES pull app
+            docker compose $COMPOSE_FILES up -d app
         env:
           GITHUB_SHA: ${{ github.sha }}
           CR_PAT: ${{ secrets.CR_PAT }}
