@@ -14,8 +14,13 @@ window.teb = {
         if (T) o.headers["Authorization"] = "Bearer " + T;
         if (b) o.body = JSON.stringify(b);
         return fetch(BASE + p, o).then(function (r) {
-            return r.json().then(function (j) { j._status = r.status; return j; })
-                .catch(function () { return { _status: r.status, error: "bad_response" }; });
+            return r.json().then(function (j) {
+                j._status = r.status;
+                /* Expired or invalid token: clear it so the login form
+                 * reappears instead of repeating 401 on every page load. */
+                if (r.status === 401 && T) { teb.token(""); teb.email(""); refreshAuthUI(); }
+                return j;
+            }).catch(function () { return { _status: r.status, error: "bad_response" }; });
         }).catch(function () { return { _status: 0, error: "network_error" }; });
     },
     /* Normalize list responses: backend returns {items:[...]}, {rows:[...]},
