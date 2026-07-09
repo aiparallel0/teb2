@@ -1,69 +1,28 @@
-name: Deploy
-
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  deploy-to-host:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    permissions: {}
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Deploy over SSH
+- name: Deploy over SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: GITHUB_SHA
+          envs: GITHUB_SHA,CR_PAT
           script: |
             set -eu
             cd /opt/teb2
             git fetch --all
             git reset --hard origin/main
             export IMAGE_TAG=sha-$(echo "${GITHUB_SHA}" | cut -c1-7)
-            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
-            docker compose -f docker-compose.yml -f ops/portearchive/compose.yml pull app
-            docker compose -f docker-compose.yml -f ops/portearchive/compose.yml up -d --remove-orphans app
+            echo "${CR_PAT}" | docker login ghcr.io -u aiparallel0 --password-stdin
+            grep -q '^IMAGE_TAG=' .env \
+              && sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=${IMAGE_TAG}|" .env \
+              || echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
+            # The portearchive.com droplet runs host nginx on :80/:443,
+            # so we only (re)deploy the `app` service on the loopback
+            # port declared in ops/portearchive/compose.yml. Starting the
+            # base compose's `nginx` service here would collide with the
+            # host nginx and fail with "address already in use".
+            COMPOSE_FILES="-f docker-compose.yml -f ops/portearchive/compose.yml"
+            docker compose $COMPOSE_FILES pull app
+            docker compose $COMPOSE_FILES up -d --remove-orphans app
         env:
           GITHUB_SHA: ${{ github.sha }}
+          CR_PAT: ${{ secrets.CR_PAT }}

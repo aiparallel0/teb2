@@ -5,6 +5,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <sys/time.h>
+#include <fcntl.h>
+#include <sys/select.h>
+#include <errno.h>
 #include "core/types.h"
 #include "core/errors.h"
 #include "exec/exec.h"
@@ -49,6 +53,34 @@ static int smtp_send(int fd, const char *line)
     return (write(fd, tmp, (size_t)len) > 0) ? 0 : -1;
 }
 
+static void smtp_set_timeouts(int fd)
+{
+    struct timeval tv;
+    tv.tv_sec = 10; tv.tv_usec = 0;
+    (void)setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    (void)setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+}
+
+static int smtp_connect(int fd, struct sockaddr *sa, socklen_t salen)
+{
+    fd_set wf;
+    struct timeval tv;
+    int flags, err = 0;
+    socklen_t elen = sizeof(err);
+    flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) return -1;
+    if (connect(fd, sa, salen) == 0) goto ok;
+    if (errno != EINPROGRESS) return -1;
+    FD_ZERO(&wf); FD_SET(fd, &wf);
+    tv.tv_sec = 10; tv.tv_usec = 0;
+    if (select(fd + 1, NULL, &wf, NULL, &tv) <= 0) return -1;
+    if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &elen) < 0 || err != 0)
+        return -1;
+ok:
+    (void)fcntl(fd, F_SETFL, flags);
+    return 0;
+}
+
 MailResult send_mail(MailReq req, Config *cfg)
 {
     MailResult r;
@@ -66,12 +98,17 @@ MailResult send_mail(MailReq req, Config *cfg)
         r.err = ERR_IO; return r;
     }
     fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (fd < 0 || connect(fd, res->ai_addr, res->ai_addrlen) != 0) {
+    if (fd < 0) {
         freeaddrinfo(res);
-        if (fd >= 0) close(fd);
+        r.err = ERR_IO; return r;
+    }
+    if (smtp_connect(fd, res->ai_addr, res->ai_addrlen) != 0) {
+        freeaddrinfo(res);
+        close(fd);
         r.err = ERR_IO; return r;
     }
     freeaddrinfo(res);
+    smtp_set_timeouts(fd);
     code = smtp_recv(fd, buf, sizeof(buf));
     if (code < 0 || code >= 500) { close(fd); r.err = ERR_IO; return r; }
     if (smtp_send(fd, "EHLO teb") < 0) { close(fd); r.err = ERR_IO; return r; }

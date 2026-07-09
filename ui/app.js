@@ -14,8 +14,13 @@ window.teb = {
         if (T) o.headers["Authorization"] = "Bearer " + T;
         if (b) o.body = JSON.stringify(b);
         return fetch(BASE + p, o).then(function (r) {
-            return r.json().then(function (j) { j._status = r.status; return j; })
-                .catch(function () { return { _status: r.status, error: "bad_response" }; });
+            return r.json().then(function (j) {
+                j._status = r.status;
+                /* Expired or invalid token: clear it so the login form
+                 * reappears instead of repeating 401 on every page load. */
+                if (r.status === 401 && T) { teb.token(""); teb.email(""); refreshAuthUI(); }
+                return j;
+            }).catch(function () { return { _status: r.status, error: "bad_response" }; });
         }).catch(function () { return { _status: 0, error: "network_error" }; });
     },
     /* Normalize list responses: backend returns {items:[...]}, {rows:[...]},
@@ -52,6 +57,9 @@ window.teb = {
         if (r._status === 403) return "Not allowed";
         if (r._status === 404) return fallback || "Not found";
         if (r._status === 429) return "Rate limited — try again shortly";
+        if (r._status === 503 || r._status === 502 || r._status === 504)
+            return "Service unavailable — try again in a moment";
+        if (r._status === 0) return "Network error — check your connection";
         return r.error || fallback || "Error";
     },
     esc: function (s) {
@@ -77,30 +85,69 @@ function refreshAuthUI() {
     if (!logged) { if (emEl) emEl.value = ""; if (pwEl) pwEl.value = ""; }
 }
 window.teb.refreshAuthUI = refreshAuthUI;
-/* auth */
+/* auth - guarded against double-submit. The previous code allowed a click
+ * storm during a slow network round-trip, producing long streams of
+ * identical 401s in the console before any response had returned. */
+var AUTH_BUSY = false;
+function authBusy(v) {
+    AUTH_BUSY = v;
+    ["btn-login", "btn-register", "btn-forgot"].forEach(function (id) {
+        var b = document.getElementById(id);
+        if (b) b.disabled = v;
+    });
+}
+function signIn(e, p, onFail) {
+    return teb.api("POST", "/auth/login", { email: e, password: p })
+        .then(function (r) {
+            if (r.error) { if (onFail) onFail(r); return false; }
+            teb.token(r.token || ""); teb.email(e); teb.err(""); refreshAuthUI();
+            teb.info("Signed in as " + e);
+            loadAll();
+            return true;
+        });
+}
 window.doLogin = function () {
+    if (AUTH_BUSY) return;
     var e = document.getElementById("email").value.trim();
     var p = document.getElementById("password").value;
     if (!e || !p) { teb.err("Email and password required"); return; }
-    teb.api("POST", "/auth/login", { email: e, password: p }).then(function (r) {
-        if (r.error) { teb.err(teb.errmsg(r, "Login failed")); return; }
-        teb.token(r.token || ""); teb.email(e); teb.err(""); refreshAuthUI();
-        teb.info("Signed in as " + e);
-        loadAll();
-    });
+    authBusy(true);
+    signIn(e, p, function (r) {
+        if (r._status === 401)
+            teb.err("Wrong email or password. Click Forgot? to reset.");
+        else teb.err(teb.errmsg(r, "Login failed"));
+    }).then(function () { authBusy(false); });
 };
 window.doRegister = function () {
+    if (AUTH_BUSY) return;
     var e = document.getElementById("email").value.trim();
     var p = document.getElementById("password").value;
     if (!e || !p) { teb.err("Email and password required"); return; }
     if (p.length < 8) { teb.err("Password must be at least 8 characters"); return; }
+    authBusy(true);
     teb.api("POST", "/auth/register", { email: e, password: p }).then(function (r) {
-        if (r.error) { teb.err(teb.errmsg(r, "Registration failed")); return; }
-        teb.err(""); teb.info("Account created — signing in\u2026");
-        window.doLogin();
-    });
+        if (!r.error) {
+            teb.err(""); teb.info("Account created — signing in\u2026");
+            return signIn(e, p, function (r2) {
+                teb.err(teb.errmsg(r2, "Sign-in after register failed"));
+            });
+        }
+        /* 409: account already exists. Try the same credentials so a
+         * user who forgot they already registered is signed in instead
+         * of bouncing between error messages. */
+        if (r._status === 409) {
+            teb.info("Account already exists — signing in\u2026");
+            return signIn(e, p, function (r2) {
+                if (r2._status === 401)
+                    teb.err("Account exists — wrong password. Click Forgot? to reset.");
+                else teb.err(teb.errmsg(r2, "Sign-in failed"));
+            });
+        }
+        teb.err(teb.errmsg(r, "Registration failed"));
+    }).then(function () { authBusy(false); });
 };
 window.doForgot = function () {
+    if (AUTH_BUSY) return;
     var e = document.getElementById("email").value.trim();
     var np = document.getElementById("password").value;
     if (!e) { teb.err("Enter your email, then click Forgot?"); return; }
@@ -108,7 +155,9 @@ window.doForgot = function () {
         teb.err("Type the NEW password (min 8 chars) in the password field, then click Forgot?");
         return;
     }
+    authBusy(true);
     teb.api("POST", "/auth/forgot", { email: e }).then(function (r) {
+        authBusy(false);
         if (r.error) { teb.err(teb.errmsg(r, "Reset request failed")); return; }
         var t = window.prompt("A reset token was emailed to " + e +
                               ".\nPaste the token here to apply the new password:");
